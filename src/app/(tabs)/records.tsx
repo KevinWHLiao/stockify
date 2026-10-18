@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, SectionList, View } from 'react-native';
+import { Platform, Pressable, SectionList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { T } from '../../components/Text';
 import { formatDateLabel } from '../../lib/time';
@@ -79,7 +79,7 @@ export default function RecordsScreen() {
             ListEmptyComponent={
               <View style={empty}>
                 <T style={emptyTitle}>這段還沒有紀錄</T>
-                <T style={emptyBody}>用下方加號補記買進、賣出、股息或配股。</T>
+                <T style={emptyBody}>{Platform.OS === 'web' ? '用上方的新增紀錄補記買進、賣出、股息或配股。' : '用下方加號補記買進、賣出、股息或配股。'}</T>
               </View>
             }
             renderSectionHeader={({ section }) => (

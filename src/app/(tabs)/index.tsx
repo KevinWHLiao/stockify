@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { HoldingRow } from '../../components/HoldingRow';
+import { HoldingRow, HoldingTable } from '../../components/HoldingRow';
 import { Logo } from '../../components/Logo';
 import { T } from '../../components/Text';
 import { isDemoTransaction } from '../../data/seed';
@@ -82,12 +82,14 @@ export default function HoldingsScreen() {
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void onRefresh()} tintColor={colors.text} />}
         contentContainerStyle={{ paddingBottom: 28 }}
       >
-        <View style={topBar}>
-          <Logo />
-          <Pressable accessibilityRole="button" accessibilityLabel="說明與設定" hitSlop={10} onPress={() => router.push('/settings')} style={iconButton}>
-            <Ionicons name="options-outline" size={20} color={colors.text} />
-          </Pressable>
-        </View>
+        {Platform.OS === 'web' ? null : (
+          <View style={topBar}>
+            <Logo />
+            <Pressable accessibilityRole="button" accessibilityLabel="說明與設定" hitSlop={10} onPress={() => router.push('/settings')} style={iconButton}>
+              <Ionicons name="options-outline" size={20} color={colors.text} />
+            </Pressable>
+          </View>
+        )}
 
         {Platform.OS === 'web' ? (
           <View style={banner}>
@@ -119,7 +121,8 @@ export default function HoldingsScreen() {
           </Pressable>
         ) : null}
 
-        <View style={hero}>
+        <View style={Platform.OS === 'web' ? webSummary : undefined}>
+        <View style={[hero, Platform.OS === 'web' && webHero]}>
           <Pressable accessibilityRole="button" style={labelRow} onPress={() => updateSettings({ pnlMode: showTotal ? 'unrealized' : 'total' })}>
             <T style={label}>{showTotal ? '總報酬' : '累積損益'}</T>
             <Ionicons name="swap-horizontal" size={15} color="rgba(255,255,255,0.55)" />
@@ -146,7 +149,7 @@ export default function HoldingsScreen() {
           </Pressable>
         </View>
 
-        <View style={metrics}>
+        <View style={[metrics, Platform.OS === 'web' && webMetrics]}>
           <Pressable accessibilityRole="button" accessibilityLabel="持股日損益" style={metric} onPress={() => router.push({ pathname: '/day/[date]', params: { date: todayTaipei() } })}>
             <T style={metricLabel}>今日</T>
             <T style={[metricValue, { color: hasPrice ? pnlColor(summary.dailyPnl) : colors.flat }]}>{hasPrice ? formatInt(summary.dailyPnl) : '—'}</T>
@@ -160,14 +163,17 @@ export default function HoldingsScreen() {
             <T style={metricValue}>{formatInt(summary.dividendIncome)}</T>
           </View>
         </View>
+        </View>
         {quoteError ? <T style={errorText}>{quoteError}</T> : null}
 
         <View style={section}>
           <View style={sectionLead}>
             <T style={sectionTitle}>庫存 {summary.held}</T>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={() => router.push('/analysis')}>
-              <T style={sectionLink}>分析</T>
-            </Pressable>
+            {Platform.OS === 'web' ? null : (
+              <Pressable accessibilityRole="button" hitSlop={8} onPress={() => router.push('/analysis')}>
+                <T style={sectionLink}>分析</T>
+              </Pressable>
+            )}
           </View>
           <T style={sectionTotal}>成本 {formatInt(summary.cost)}</T>
         </View>
@@ -199,8 +205,14 @@ export default function HoldingsScreen() {
         {views.length === 0 ? (
           <View style={empty}>
             <T style={emptyTitle}>還沒有持股</T>
-            <T style={emptyBody}>點下方加號，記下買進、股息、配息或配股。</T>
+            <T style={emptyBody}>{Platform.OS === 'web' ? '用上方的新增紀錄，記下買進、股息、配息或配股。' : '點下方加號，記下買進、股息、配息或配股。'}</T>
           </View>
+        ) : Platform.OS === 'web' ? (
+          <HoldingTable
+            items={sorted}
+            weights={Object.fromEntries(sorted.map((item) => [item.symbol, portfolioWeight(item.marketValue, summary.marketValue)]))}
+            onPress={(symbol) => router.push({ pathname: '/stock/[symbol]', params: { symbol } })}
+          />
         ) : (
           sorted.map((item) => (
             <HoldingRow
@@ -235,6 +247,9 @@ const iconButton = {
 const banner = { marginHorizontal: 16, marginBottom: 12, backgroundColor: colors.banner, borderRadius: 16, padding: 14, gap: 8 };
 const bannerText = { color: colors.bannerText, fontSize: 13, lineHeight: 19 };
 const bannerAction = { color: colors.blue, fontWeight: '800' as const };
+const webSummary = { flexDirection: 'row' as const, alignItems: 'stretch' as const, marginTop: 16 };
+const webHero = { flex: 1.4, marginRight: 0 };
+const webMetrics = { flex: 1.6, marginTop: 0, paddingRight: 16 };
 const hero = {
   marginHorizontal: 16,
   backgroundColor: colors.surface,

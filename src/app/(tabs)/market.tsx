@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MARKET_INDICES, SECTOR_GROUP_LABEL, SECTOR_HEADLINES, SECTOR_INDICES, type SectorGroup } from '../../data/market';
 import { refreshMarketQuotes, useMarketQuotes } from '../../hooks/useMarketQuotes';
@@ -175,13 +175,14 @@ export default function MarketScreen() {
           <View key={group.group}>
             <T style={groupLabel}>{group.label}</T>
             {group.group === 'finance' ? <T style={groupHint}>證交所沒有再把金融拆成銀行、保險、證券。</T> : null}
+            <View style={Platform.OS === 'web' ? webGrid : undefined}>
             {group.rows.map(({ meta, quote }) => (
               <Pressable
                 key={meta.symbol}
                 accessibilityRole="button"
                 accessibilityLabel={meta.name}
                 onPress={() => router.push({ pathname: '/quote/[symbol]', params: { symbol: meta.symbol } })}
-                style={sectorRow}
+                style={[sectorRow, Platform.OS === 'web' && webCell]}
               >
                 <View style={{ flex: 1, paddingRight: 10 }}>
                   <T style={rowName}>{meta.shortName}</T>
@@ -197,6 +198,7 @@ export default function MarketScreen() {
                 </View>
               </Pressable>
             ))}
+            </View>
           </View>
         ))}
 
@@ -210,15 +212,18 @@ export default function MarketScreen() {
             <T style={emptyBody}>點右上角加號，搜尋代號或名稱加入觀察。</T>
           </View>
         ) : (
-          rows.map(({ item, quote }) => (
+          <View style={Platform.OS === 'web' ? webGrid : undefined}>
+          {rows.map(({ item, quote }) => (
             <WatchRow
+              web={Platform.OS === 'web'}
               key={item.symbol}
               item={item}
               quote={quote}
               onPress={() => router.push({ pathname: '/quote/[symbol]', params: { symbol: item.symbol } })}
               onRemove={() => removeWatch(item.symbol)}
             />
-          ))
+          ))}
+          </View>
         )}
       </ScrollView>
 
@@ -291,15 +296,17 @@ function WatchRow({
   quote,
   onPress,
   onRemove,
+  web = false,
 }: {
   item: WatchItem;
   quote?: Quote;
   onPress: () => void;
   onRemove: () => void;
+  web?: boolean;
 }) {
   const tone = pnlColor(quote?.change);
   return (
-    <View style={watchCard}>
+    <View style={[watchCard, web && webCell]}>
       <Pressable accessibilityRole="button" accessibilityLabel={item.name} onPress={onPress} style={watchMain}>
         <View style={{ flex: 1, paddingRight: 10 }}>
           <T style={rowName} numberOfLines={1}>
@@ -385,10 +392,12 @@ const sectorRow = {
 };
 const indexGrid = { flexDirection: 'row' as const, flexWrap: 'wrap' as const, paddingHorizontal: 16, justify: -4 };
 const indexCard = {
-  width: '50%' as const,
+  width: (Platform.OS === 'web' ? 280 : '50%') as number | '50%',
   padding: 4,
   backgroundColor: 'transparent',
 };
+const webGrid = { flexDirection: 'row' as const, flexWrap: 'wrap' as const, paddingHorizontal: 16, gap: 8 };
+const webCell = { width: '48%' as const, marginHorizontal: 0, flexGrow: 1 };
 const indexInner = {
   backgroundColor: colors.surface,
   borderRadius: 18,
