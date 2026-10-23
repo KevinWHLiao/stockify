@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { Pressable, View } from 'react-native';
+import { useStore } from '../store/useStore';
 import { colors } from '../theme';
 import { Logo } from './Logo';
 import { T } from './Text';
@@ -13,6 +14,8 @@ const LINKS = [
 
 export function WebNav() {
   const path = usePathname();
+  const hidden = useStore((state) => state.settings.hideReturns);
+  const updateSettings = useStore((state) => state.updateSettings);
   return (
     <View style={bar}>
       <Logo />
@@ -36,6 +39,14 @@ export function WebNav() {
         <Pressable accessibilityRole="button" onPress={() => router.push('/add')} style={add}>
           <Ionicons name="add" size={18} color="#090A0C" />
           <T style={addText}>新增紀錄</T>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={hidden ? '顯示報酬' : '隱藏報酬'}
+          onPress={() => updateSettings({ hideReturns: !hidden })}
+          style={icon}
+        >
+          <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.text} />
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="說明與設定" onPress={() => router.push('/settings')} style={icon}>
           <Ionicons name="options-outline" size={18} color={colors.text} />

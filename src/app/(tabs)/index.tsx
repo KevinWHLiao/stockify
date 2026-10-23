@@ -10,7 +10,7 @@ import { isDemoTransaction } from '../../data/seed';
 import { backupAgeDays, parseBackup, quotesFromBackup } from '../../lib/backup';
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { refreshQuotes } from '../../hooks/useQuoteSync';
-import { formatInt, formatPct } from '../../lib/format';
+import { formatInt, formatPct, maskMoney } from '../../lib/format';
 import { portfolioWeight, sortHoldings } from '../../lib/holdings';
 import type { HoldingSort } from '../../types';
 import { formatQuoteStamp, todayTaipei } from '../../lib/time';
@@ -28,6 +28,7 @@ export default function HoldingsScreen() {
   const quoteError = useStore((state) => state.quoteError);
   const [pulling, setPulling] = useState(false);
 
+  const hidden = settings.hideReturns;
   const showTotal = settings.pnlMode === 'total';
   const headline = showTotal ? summary.total : summary.unrealized;
   const headlinePct = showTotal ? summary.totalPct : summary.unrealizedPct;
@@ -80,9 +81,20 @@ export default function HoldingsScreen() {
         {Platform.OS === 'web' ? null : (
           <View style={topBar}>
             <Logo />
-            <Pressable accessibilityRole="button" accessibilityLabel="說明與設定" hitSlop={10} onPress={() => router.push('/settings')} style={iconButton}>
-              <Ionicons name="options-outline" size={20} color={colors.text} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={hidden ? '顯示報酬' : '隱藏報酬'}
+                hitSlop={10}
+                onPress={() => updateSettings({ hideReturns: !hidden })}
+                style={iconButton}
+              >
+                <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.text} />
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="說明與設定" hitSlop={10} onPress={() => router.push('/settings')} style={iconButton}>
+                <Ionicons name="options-outline" size={20} color={colors.text} />
+              </Pressable>
+            </View>
           </View>
         )}
 
@@ -123,10 +135,10 @@ export default function HoldingsScreen() {
           {showTotal ? <T style={hint}>含已實現損益與股息</T> : null}
           <View style={heroNumbers}>
             <T style={heroValue} numberOfLines={1} adjustsFontSizeToFit>
-              {hasPrice ? formatInt(headline) : '—'}
+              {maskMoney(hidden, hasPrice ? formatInt(headline) : '—')}
             </T>
             <View style={[pctPill, { backgroundColor: hasPrice && headline < 0 ? 'rgba(15,159,110,0.18)' : 'rgba(225,29,46,0.18)' }]}>
-              <T style={[heroPct, { color: hasPrice ? pnlColor(headline) : '#fff' }]}>{hasPrice ? formatPct(headlinePct) : '—'}</T>
+              <T style={[heroPct, { color: hidden ? '#fff' : hasPrice ? pnlColor(headline) : '#fff' }]}>{maskMoney(hidden, hasPrice ? formatPct(headlinePct) : '—')}</T>
             </View>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="更新報價" onPress={() => void onRefresh()}>
@@ -145,15 +157,15 @@ export default function HoldingsScreen() {
         <View style={[metrics, Platform.OS === 'web' && webMetrics]}>
           <Pressable accessibilityRole="button" accessibilityLabel="持股日損益" style={metric} onPress={() => router.push({ pathname: '/day/[date]', params: { date: todayTaipei() } })}>
             <T style={metricLabel}>今日</T>
-            <T style={[metricValue, { color: hasPrice ? pnlColor(summary.dailyPnl) : colors.flat }]}>{hasPrice ? formatInt(summary.dailyPnl) : '—'}</T>
+            <T style={[metricValue, { color: hidden ? colors.flat : hasPrice ? pnlColor(summary.dailyPnl) : colors.flat }]}>{maskMoney(hidden, hasPrice ? formatInt(summary.dailyPnl) : '—')}</T>
           </Pressable>
           <View style={metric}>
             <T style={metricLabel}>市值</T>
-            <T style={metricValue}>{hasPrice ? formatInt(summary.marketValue) : '—'}</T>
+            <T style={metricValue}>{maskMoney(hidden, hasPrice ? formatInt(summary.marketValue) : '—')}</T>
           </View>
           <View style={metric}>
             <T style={metricLabel}>股息</T>
-            <T style={metricValue}>{formatInt(summary.dividendIncome)}</T>
+            <T style={metricValue}>{maskMoney(hidden, formatInt(summary.dividendIncome))}</T>
           </View>
         </View>
         </View>
@@ -169,7 +181,7 @@ export default function HoldingsScreen() {
             )}
           </View>
           <T style={sectionTotal}>
-            已實現 {formatInt(summary.realized)} · 成本 {formatInt(summary.cost)}
+            已實現 {maskMoney(hidden, formatInt(summary.realized))} · 成本 {maskMoney(hidden, formatInt(summary.cost))}
           </T>
         </View>
         {views.length > 0 ? (
@@ -204,6 +216,7 @@ export default function HoldingsScreen() {
           </View>
         ) : Platform.OS === 'web' ? (
           <HoldingTable
+            hidden={hidden}
             items={sorted}
             weights={Object.fromEntries(sorted.map((item) => [item.symbol, portfolioWeight(item.marketValue, summary.marketValue)]))}
             onPress={(symbol) => router.push({ pathname: '/stock/[symbol]', params: { symbol } })}
@@ -213,6 +226,7 @@ export default function HoldingsScreen() {
             <HoldingRow
               key={item.symbol}
               item={item}
+              hidden={hidden}
               weight={portfolioWeight(item.marketValue, summary.marketValue)}
               onPress={() => router.push({ pathname: '/stock/[symbol]', params: { symbol: item.symbol } })}
             />

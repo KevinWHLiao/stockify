@@ -1,3 +1,9 @@
+export const HIDDEN_MONEY = '••••';
+
+export function maskMoney(hidden: boolean, text: string) {
+  return hidden ? HIDDEN_MONEY : text;
+}
+
 export function formatInt(value: number) {
   return Math.round(value).toLocaleString('en-US');
 }

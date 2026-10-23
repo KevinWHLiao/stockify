@@ -56,6 +56,18 @@ export default function SettingsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top', 'bottom']}>
       <ScreenHeader title="說明與設定" />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        <T style={h1}>隱私</T>
+        <View style={row}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <T style={h1}>隱藏報酬數字</T>
+            <T style={body}>打開後，損益、報酬率、今日盈虧、市值、成本與股息金額會改成圓點。股價漲跌仍看得到。持股頁右上角的眼睛也可以切換。</T>
+          </View>
+          <Switch
+            value={settings.hideReturns}
+            onValueChange={(value) => updateSettings({ hideReturns: value })}
+            trackColor={{ true: colors.blue, false: '#3A3D46' }}
+          />
+        </View>
         <T style={h1}>報價</T>
         <T style={body}>
           股價來自臺灣證券交易所公開行情；若交易所暫時沒回應，會改用另一份報價。交易日 9:00 到 13:35 約每 8 秒更新，其餘時間約每 3 分鐘更新，回到 App 也會再抓一次。這不是券商下單功能，數字只供自己對帳。
@@ -154,7 +166,7 @@ export default function SettingsScreen() {
         <T style={h1}>關於</T>
         <View style={about}>
           <T style={aboutName}>我的持股</T>
-          <T style={aboutLine}>版本 {Constants.nativeAppVersion || Constants.expoConfig?.version || '1.5.2'}</T>
+          <T style={aboutLine}>版本 {Constants.nativeAppVersion || Constants.expoConfig?.version || '1.5.3'}</T>
           {Constants.nativeBuildVersion ? <T style={aboutLine}>組建編號 {Constants.nativeBuildVersion}</T> : null}
           <T style={body}>庫存與交易只存在這台裝置，開發者不會收到你的持股內容。這不是投資建議，也不能下單。</T>
         </View>

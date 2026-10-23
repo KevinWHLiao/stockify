@@ -36,6 +36,8 @@ export interface Settings {
   /** 今日漲跌幅絕對值達到這個百分比才提醒。 */
   alertPercent: number;
   alertedKeys: string[];
+  /** 隱藏損益、報酬與市值，避免旁人看到。 */
+  hideReturns: boolean;
 }
 
 export const defaultSettings: Settings = {
@@ -50,6 +52,7 @@ export const defaultSettings: Settings = {
   priceAlert: false,
   alertPercent: 3,
   alertedKeys: [],
+  hideReturns: false,
 };
 
 export interface Quote {

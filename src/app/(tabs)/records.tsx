@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { T } from '../../components/Text';
 import { formatDateLabel } from '../../lib/time';
 import { cashEffect } from '../../lib/portfolio';
-import { formatAvg, formatInt, formatPrice } from '../../lib/format';
+import { formatAvg, formatInt, formatPrice, maskMoney } from '../../lib/format';
 import { useStore } from '../../store/useStore';
 import type { Transaction, TxType } from '../../types';
 import { colors, pnlColor } from '../../theme';
@@ -27,6 +27,7 @@ const TYPE_LABEL: Record<TxType, string> = {
 
 export default function RecordsScreen() {
   const transactions = useStore((state) => state.transactions);
+  const hidden = useStore((state) => state.settings.hideReturns);
   const snapshots = useStore((state) => state.snapshots);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('all');
   const [mode, setMode] = useState<'ledger' | 'daily'>('ledger');
@@ -87,7 +88,7 @@ export default function RecordsScreen() {
                 <T style={dateText}>{formatDateLabel(section.title)}</T>
               </View>
             )}
-            renderItem={({ item }) => <RecordRow item={item} />}
+            renderItem={({ item }) => <RecordRow hidden={hidden} item={item} />}
           />
         </>
       ) : (
@@ -105,9 +106,9 @@ export default function RecordsScreen() {
             <Pressable style={dayRow} onPress={() => router.push({ pathname: '/day/[date]', params: { date: item.date } })}>
               <View>
                 <T style={dayDate}>{formatDateLabel(item.date)}</T>
-                <T style={dayMeta}>市值 {formatInt(item.totalMarketValue)}</T>
+                <T style={dayMeta}>市值 {maskMoney(hidden, formatInt(item.totalMarketValue))}</T>
               </View>
-              <T style={[dayPnl, { color: pnlColor(item.totalDailyPnl) }]}>{formatInt(item.totalDailyPnl)}</T>
+              <T style={[dayPnl, { color: hidden ? colors.flat : pnlColor(item.totalDailyPnl) }]}>{maskMoney(hidden, formatInt(item.totalDailyPnl))}</T>
             </Pressable>
           )}
         />
@@ -124,14 +125,14 @@ function ModeButton({ label, active, onPress }: { label: string; active: boolean
   );
 }
 
-function RecordRow({ item }: { item: Transaction }) {
+function RecordRow({ item, hidden }: { item: Transaction; hidden: boolean }) {
   const cash = cashEffect(item);
   const detail =
     item.type === 'stock_dividend'
       ? `配股 ${formatInt(item.shares)} 股`
       : item.type === 'cash_dividend'
-        ? `股息 ${formatInt(item.amount)}${item.price > 0 ? `・每股 ${formatAvg(item.price)}` : ''}`
-        : `${TYPE_LABEL[item.type]} ${formatInt(item.shares)} 股・${formatPrice(item.price)}`;
+        ? `股息 ${maskMoney(hidden, formatInt(item.amount))}${item.price > 0 ? `・每股 ${maskMoney(hidden, formatAvg(item.price))}` : ''}`
+        : `${TYPE_LABEL[item.type]} ${formatInt(item.shares)} 股・${maskMoney(hidden, formatPrice(item.price))}`;
   return (
     <Pressable style={record} onPress={() => router.push({ pathname: '/add', params: { id: item.id } })}>
       <View style={{ flex: 1 }}>
@@ -146,8 +147,8 @@ function RecordRow({ item }: { item: Transaction }) {
           <T style={recordCash}>+{formatInt(item.shares)}股</T>
         ) : (
           <T style={[recordCash, { color: item.type === 'cash_dividend' ? colors.up : colors.text }]}>
-            {cash > 0 ? '+' : ''}
-            {formatInt(cash)}
+            {hidden ? '' : cash > 0 ? '+' : ''}
+            {maskMoney(hidden, formatInt(cash))}
           </T>
         )}
       </View>

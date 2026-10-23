@@ -7,11 +7,13 @@ import { T } from '../components/Text';
 import { analyzeHoldings, dailyObservations, lookThrough, type Exposure } from '../lib/analysis';
 import { isTaiwanSymbol, type EtfConstituent } from '../lib/etfHoldings';
 import { usePortfolio } from '../hooks/usePortfolio';
+import { useStore } from '../store/useStore';
 import { fetchEtfConstituents } from '../services/etf';
 import { colors } from '../theme';
 
 export default function AnalysisScreen() {
   const { views, summary } = usePortfolio();
+  const hidden = useStore((state) => state.settings.hideReturns);
   const notes = useMemo(() => analyzeHoldings(views, summary), [views, summary]);
   const today = useMemo(() => dailyObservations(views, summary), [views, summary]);
   const etfKey = useMemo(
@@ -54,15 +56,24 @@ export default function AnalysisScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top', 'bottom']}>
       <ScreenHeader title="持股分析" />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 36 }}>
-        <T style={headingFirst}>今日行情</T>
-        <T style={hint}>依今天的報價和你記的庫存整理。只說明帳面變化，不判斷該買或該賣。</T>
-        {today.map((note) => (
-          <View key={note.title} style={card}>
-            <T style={cardTitle}>{note.title}</T>
-            <T style={cardBody}>{note.body}</T>
+        {hidden ? (
+          <View style={card}>
+            <T style={cardTitle}>報酬數字已隱藏</T>
+            <T style={cardBody}>損益、今日盈虧和市值不會顯示在這裡。到設定或持股頁的眼睛圖示可以打開。</T>
           </View>
-        ))}
-        {notes.map((note) => (
+        ) : (
+          <>
+            <T style={headingFirst}>今日行情</T>
+            <T style={hint}>依今天的報價和你記的庫存整理。只說明帳面變化，不判斷該買或該賣。</T>
+            {today.map((note) => (
+              <View key={note.title} style={card}>
+                <T style={cardTitle}>{note.title}</T>
+                <T style={cardBody}>{note.body}</T>
+              </View>
+            ))}
+          </>
+        )}
+        {(hidden ? notes.filter((note) => !note.title.includes('元') && !note.body.includes('元')) : notes).map((note) => (
           <View key={note.title} style={card}>
             <T style={cardTitle}>{note.title}</T>
             <T style={cardBody}>{note.body}</T>

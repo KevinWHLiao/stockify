@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { T } from '../../components/Text';
 import { usePortfolio } from '../../hooks/usePortfolio';
-import { formatInt, formatMove, formatPrice } from '../../lib/format';
+import { formatInt, formatMove, formatPrice, maskMoney } from '../../lib/format';
 import { formatDateLabel, todayTaipei } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { colors, pnlColor } from '../../theme';
@@ -13,6 +13,7 @@ import { colors, pnlColor } from '../../theme';
 export default function DayScreen() {
   const params = useLocalSearchParams<{ date: string }>();
   const date = Array.isArray(params.date) ? params.date[0] : params.date;
+  const hidden = useStore((state) => state.settings.hideReturns);
   const snapshot = useStore((state) => (date ? state.snapshots[date] : undefined));
   const allTransactions = useStore((state) => state.transactions);
   const transactions = useMemo(
@@ -45,8 +46,8 @@ export default function DayScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 28 }}>
         <View style={{ paddingHorizontal: 20 }}>
           <T style={{ color: colors.muted }}>{formatDateLabel(date)}</T>
-          <T style={[hero, { color: items.length ? pnlColor(totalDaily) : colors.flat }]}>{items.length ? formatInt(totalDaily) : '—'}</T>
-          <T style={{ color: colors.muted }}>{items.length ? `收盤市值 ${formatInt(totalValue)}` : '這天沒有行情快照'}</T>
+          <T style={[hero, { color: hidden || !items.length ? colors.flat : pnlColor(totalDaily) }]}>{items.length ? maskMoney(hidden, formatInt(totalDaily)) : '—'}</T>
+          <T style={{ color: colors.muted }}>{items.length ? `收盤市值 ${maskMoney(hidden, formatInt(totalValue))}` : '這天沒有行情快照'}</T>
         </View>
         <T style={section}>持股當日損益</T>
         {items.length === 0 ? <T style={empty}>連線更新後才會留下當天股價。手動紀錄仍會列在下面。</T> : null}
@@ -58,7 +59,7 @@ export default function DayScreen() {
                 {formatPrice(item.price)} {formatMove(item.change, item.changePercent)}・{formatInt(item.shares)}股
               </T>
             </View>
-            <T style={[pnl, { color: pnlColor(item.dailyPnl) }]}>{formatInt(item.dailyPnl)}</T>
+            <T style={[pnl, { color: hidden ? colors.flat : pnlColor(item.dailyPnl) }]}>{maskMoney(hidden, formatInt(item.dailyPnl))}</T>
           </View>
         ))}
         <T style={section}>當天手動紀錄</T>

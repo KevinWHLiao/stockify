@@ -5,7 +5,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { T } from '../../components/Text';
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { breakEvenPrice } from '../../lib/fees';
-import { formatAvg, formatInt, formatMove, formatPct, formatPrice } from '../../lib/format';
+import { formatAvg, formatInt, formatMove, formatPct, formatPrice, maskMoney } from '../../lib/format';
 import { portfolioWeight } from '../../lib/holdings';
 import { useStore } from '../../store/useStore';
 import { colors, pnlColor } from '../../theme';
@@ -23,6 +23,7 @@ export default function StockScreen() {
   const code = Array.isArray(symbol) ? symbol[0] : symbol;
   const { views, positions, summary } = usePortfolio();
   const settings = useStore((state) => state.settings);
+  const hidden = settings.hideReturns;
   const transactions = useStore((state) => state.transactions);
   const view = views.find((item) => item.symbol === code);
   const position = positions.find((item) => item.symbol === code);
@@ -59,17 +60,17 @@ export default function StockScreen() {
         <View style={grid}>
           <Stat label="持股" value={`${formatInt(shares)} 股`} />
           <Stat label="佔組合" value={weight == null ? '—' : `${weight.toFixed(1)}%`} />
-          <Stat label="市值" value={view?.marketValue == null ? '—' : formatInt(view.marketValue)} />
-          <Stat label="損益兩平價" value={even == null ? '—' : formatPrice(even)} />
-          <Stat label="成本均價" value={formatAvg(view?.costAvg ?? null)} />
-          <Stat label="買進均價" value={formatAvg(view?.buyAvg ?? null)} />
-          <Stat label="持股成本" value={formatInt(view?.totalCost ?? position?.totalCost ?? 0)} />
-          <Stat label="預估賣出費用" value={view?.sellCost == null ? '—' : formatInt(view.sellCost)} />
-          <Stat label="未實現損益" value={view?.pnl == null ? '—' : formatInt(view.pnl)} color={pnlColor(view?.pnl)} />
-          <Stat label="報酬率" value={view?.pnlPct == null ? '—' : formatPct(view.pnlPct)} color={pnlColor(view?.pnl)} />
-          <Stat label="今日損益" value={view?.dailyPnl == null ? '—' : formatInt(view.dailyPnl)} color={pnlColor(view?.dailyPnl)} />
-          <Stat label="累計股息" value={formatInt(position?.dividendIncome ?? 0)} />
-          <Stat label="已實現損益" value={formatInt(position?.realized ?? 0)} color={pnlColor(position?.realized)} />
+          <Stat label="市值" value={maskMoney(hidden, view?.marketValue == null ? '—' : formatInt(view.marketValue))} />
+          <Stat label="損益兩平價" value={maskMoney(hidden, even == null ? '—' : formatPrice(even))} />
+          <Stat label="成本均價" value={maskMoney(hidden, formatAvg(view?.costAvg ?? null))} />
+          <Stat label="買進均價" value={maskMoney(hidden, formatAvg(view?.buyAvg ?? null))} />
+          <Stat label="持股成本" value={maskMoney(hidden, formatInt(totalCost))} />
+          <Stat label="預估賣出費用" value={maskMoney(hidden, view?.sellCost == null ? '—' : formatInt(view.sellCost))} />
+          <Stat label="未實現損益" value={maskMoney(hidden, view?.pnl == null ? '—' : formatInt(view.pnl))} color={hidden ? colors.flat : pnlColor(view?.pnl)} />
+          <Stat label="報酬率" value={maskMoney(hidden, view?.pnlPct == null ? '—' : formatPct(view.pnlPct))} color={hidden ? colors.flat : pnlColor(view?.pnl)} />
+          <Stat label="今日損益" value={maskMoney(hidden, view?.dailyPnl == null ? '—' : formatInt(view.dailyPnl))} color={hidden ? colors.flat : pnlColor(view?.dailyPnl)} />
+          <Stat label="累計股息" value={maskMoney(hidden, formatInt(position?.dividendIncome ?? 0))} />
+          <Stat label="已實現損益" value={maskMoney(hidden, formatInt(position?.realized ?? 0))} color={hidden ? colors.flat : pnlColor(position?.realized)} />
         </View>
         <View style={actions}>
           {ACTIONS.map((action) => (

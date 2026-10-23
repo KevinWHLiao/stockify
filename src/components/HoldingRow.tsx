@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import { formatAvg, formatInt, formatMove, formatPct, formatPrice } from '../lib/format';
+import { formatAvg, formatInt, formatMove, formatPct, formatPrice, maskMoney } from '../lib/format';
 import type { PositionView } from '../types';
 import { colors, pnlColor } from '../theme';
 import { T } from './Text';
@@ -7,10 +7,12 @@ import { T } from './Text';
 export function HoldingTable({
   items,
   weights,
+  hidden = false,
   onPress,
 }: {
   items: PositionView[];
   weights: Record<string, number | null>;
+  hidden?: boolean;
   onPress: (symbol: string) => void;
 }) {
   return (
@@ -38,9 +40,9 @@ export function HoldingTable({
             <T style={[cell, { flex: 1.3, color: pnlColor(item.change) }]}>
               {item.change == null || item.changePercent == null ? '尚無報價' : formatMove(item.change, item.changePercent)}
             </T>
-            <T style={[cell, { flex: 1.2 }]}>{item.marketValue == null ? '—' : formatInt(item.marketValue)}</T>
-            <T style={[cell, { flex: 1.2, color: pnlColor(item.pnl) }]}>{item.pnl == null ? '—' : formatInt(item.pnl)}</T>
-            <T style={[cell, { flex: 0.9, color: pnlColor(item.pnlPct) }]}>{item.pnlPct == null ? '—' : formatPct(item.pnlPct)}</T>
+            <T style={[cell, { flex: 1.2 }]}>{maskMoney(hidden, item.marketValue == null ? '—' : formatInt(item.marketValue))}</T>
+            <T style={[cell, { flex: 1.2, color: hidden ? colors.flat : pnlColor(item.pnl) }]}>{maskMoney(hidden, item.pnl == null ? '—' : formatInt(item.pnl))}</T>
+            <T style={[cell, { flex: 0.9, color: hidden ? colors.flat : pnlColor(item.pnlPct) }]}>{maskMoney(hidden, item.pnlPct == null ? '—' : formatPct(item.pnlPct))}</T>
           </Pressable>
         );
       })}
@@ -59,7 +61,7 @@ const COLUMNS: { key: string; label: string; flex: number; align?: 'right' }[] =
   { key: 'return', label: '報酬', flex: 0.9, align: 'right' },
 ];
 
-export function HoldingRow({ item, weight, onPress }: { item: PositionView; weight?: number | null; onPress: () => void }) {
+export function HoldingRow({ item, weight, hidden = false, onPress }: { item: PositionView; weight?: number | null; hidden?: boolean; onPress: () => void }) {
   const priceColor = pnlColor(item.change);
   const totalColor = pnlColor(item.pnl);
   return (
@@ -81,14 +83,14 @@ export function HoldingRow({ item, weight, onPress }: { item: PositionView; weig
             {item.change == null || item.changePercent == null ? '尚無報價' : formatMove(item.change, item.changePercent)}
           </T>
           {item.dailyPnl == null ? null : (
-            <T style={[move, { color: pnlColor(item.dailyPnl) }]}>今日 {formatInt(item.dailyPnl)}</T>
+            <T style={[move, { color: hidden ? colors.flat : pnlColor(item.dailyPnl) }]}>今日 {maskMoney(hidden, formatInt(item.dailyPnl))}</T>
           )}
         </View>
       </View>
       <View style={stats}>
-        <Stat label="成本均" value={formatAvg(item.costAvg)} />
-        <Stat label="買均" value={formatAvg(item.buyAvg)} />
-        <Stat label="損益" value={item.pnl == null ? '—' : formatInt(item.pnl)} color={totalColor} hint={item.pnlPct == null ? '' : formatPct(item.pnlPct)} />
+        <Stat label="成本均" value={maskMoney(hidden, formatAvg(item.costAvg))} />
+        <Stat label="買均" value={maskMoney(hidden, formatAvg(item.buyAvg))} />
+        <Stat label="損益" value={maskMoney(hidden, item.pnl == null ? '—' : formatInt(item.pnl))} color={hidden ? colors.flat : totalColor} hint={hidden ? '' : item.pnlPct == null ? '' : formatPct(item.pnlPct)} />
       </View>
     </Pressable>
   );
