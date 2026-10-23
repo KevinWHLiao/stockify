@@ -50,6 +50,24 @@ export function isValidDate(iso: string) {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
+export function taipeiStamp(instant: Date) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(instant);
+  const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
+  return {
+    date: `${pick('year')}${pick('month')}${pick('day')}`,
+    time: `${pick('hour')}:${pick('minute')}:${pick('second')}`,
+  };
+}
+
 export function formatQuoteStamp(date: string, time: string) {
   if (date.length === 8) {
     return `${date.slice(4, 6)}/${date.slice(6, 8)} ${time.slice(0, 5)}`;

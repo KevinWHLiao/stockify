@@ -76,6 +76,64 @@ export function analyzeHoldings(views: PositionView[], summary: Summary): Analys
   return notes;
 }
 
+export function dailyObservations(views: PositionView[], summary: Summary): AnalysisNote[] {
+  const priced = views.filter((view) => view.price != null && (view.marketValue ?? 0) > 0 && view.changePercent != null);
+  if (priced.length === 0 || summary.marketValue <= 0) {
+    return [{ title: '今天還沒有可用的行情', body: '報價更新後，這裡會依今天的漲跌整理觀察，不會判斷該買或該賣。' }];
+  }
+
+  const notes: AnalysisNote[] = [];
+  const dayPct = (summary.dailyPnl / summary.marketValue) * 100;
+  const daySign = summary.dailyPnl > 0 ? '+' : '';
+  notes.push({
+    title: `今天帳面 ${daySign}${formatInt(summary.dailyPnl)} 元`,
+    body: `約當目前市值 ${dayPct > 0 ? '+' : ''}${dayPct.toFixed(2)}%。這是還沒賣出的浮動損益。`,
+  });
+
+  const swings = [...priced].filter((view) => Math.abs(view.changePercent ?? 0) >= 3);
+  swings.sort((a, b) => Math.abs(b.changePercent ?? 0) - Math.abs(a.changePercent ?? 0));
+  if (swings.length > 0) {
+    const lines = swings
+      .slice(0, 3)
+      .map((view) => {
+        const percent = view.changePercent ?? 0;
+        return `${view.name} ${percent > 0 ? '+' : ''}${percent.toFixed(2)}%，約 ${formatInt(view.dailyPnl ?? 0)} 元`;
+      })
+      .join('。');
+    notes.push({
+      title: '今天波動比較大的持股',
+      body: `${lines}。單日漲跌不能當作進出場依據。`,
+    });
+  } else {
+    notes.push({ title: '今天沒有持股漲跌超過 3%', body: '各檔今天的價格波動都還在這個範圍內。' });
+  }
+
+  const top = [...priced].sort((a, b) => (b.marketValue ?? 0) - (a.marketValue ?? 0))[0];
+  const topWeight = ((top.marketValue ?? 0) / summary.marketValue) * 100;
+  const topShare = summary.dailyPnl === 0 ? 0 : Math.abs((top.dailyPnl ?? 0) / summary.dailyPnl);
+  if (topWeight >= 40 && topShare >= 0.6 && (top.dailyPnl ?? 0) !== 0) {
+    notes.push({
+      title: `今天的損益大多來自 ${top.name}`,
+      body: `它佔市值 ${topWeight.toFixed(1)}%，今天約 ${formatInt(top.dailyPnl ?? 0)} 元。比重高的時候，整體損益幾乎跟著這一檔走。`,
+    });
+  }
+
+  const nearCost = priced.filter((view) => {
+    if (view.costAvg == null || view.price == null || view.costAvg <= 0) return false;
+    return Math.abs(view.price - view.costAvg) / view.costAvg <= 0.03;
+  });
+  if (nearCost.length > 0) {
+    notes.push({
+      title: `${nearCost
+        .slice(0, 3)
+        .map((view) => view.name)
+        .join('、')} 現價接近成本`,
+      body: '現價和成本均價的差距在 3% 以內。接近成本只代表帳面接近打平，不是買賣時機。',
+    });
+  }
+  return notes;
+}
+
 export function lookThrough(views: PositionView[], baskets: Record<string, EtfConstituent[]>, marketValue: number): Exposure[] {
   if (marketValue <= 0) return [];
   const bucket = new Map<string, Exposure>();

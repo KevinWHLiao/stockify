@@ -3,7 +3,8 @@ import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { ALL_MARKET_INDICES } from '../data/market';
 import { isMarketOpen } from '../lib/time';
-import { fetchQuotes, liveQuotesAvailable } from '../services/quotes';
+import { cnyesId } from '../lib/cnyesQuote';
+import { browserQuotesOnly, fetchQuotes, liveQuotesAvailable } from '../services/quotes';
 import { useStore } from '../store/useStore';
 
 let refreshFn: (() => Promise<void>) | null = null;
@@ -34,9 +35,10 @@ export function useMarketQuotes(active: boolean) {
       const quotes = await fetchQuotes(items, (partial) => {
         if (partial.length > 0) setMarketQuotes(partial);
       });
-      if (quotes.length === 0) throw new Error('empty');
+      const expected = browserQuotesOnly() ? items.filter((item) => cnyesId(item.symbol)).length : items.length;
+      if (quotes.length === 0 && expected > 0) throw new Error('empty');
       setMarketQuotes(quotes);
-      setMarketError(quotes.length < items.length ? '部分標的暫時沒有報價' : null);
+      setMarketError(quotes.length < expected ? '部分標的暫時沒有報價' : null);
     } catch {
       setMarketError('暫時連不到交易所，先顯示上次行情');
     } finally {
@@ -67,7 +69,7 @@ export function useMarketQuotes(active: boolean) {
           running = false;
         }
         if (stopped) return;
-        timer = setTimeout(tick, isMarketOpen() ? 20000 : 180000);
+        timer = setTimeout(tick, isMarketOpen() ? 8000 : 180000);
       };
 
       void tick();

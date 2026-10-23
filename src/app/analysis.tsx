@@ -4,7 +4,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { T } from '../components/Text';
-import { analyzeHoldings, lookThrough, type Exposure } from '../lib/analysis';
+import { analyzeHoldings, dailyObservations, lookThrough, type Exposure } from '../lib/analysis';
 import { isTaiwanSymbol, type EtfConstituent } from '../lib/etfHoldings';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { fetchEtfConstituents } from '../services/etf';
@@ -13,6 +13,7 @@ import { colors } from '../theme';
 export default function AnalysisScreen() {
   const { views, summary } = usePortfolio();
   const notes = useMemo(() => analyzeHoldings(views, summary), [views, summary]);
+  const today = useMemo(() => dailyObservations(views, summary), [views, summary]);
   const etfKey = useMemo(
     () =>
       views
@@ -53,6 +54,14 @@ export default function AnalysisScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top', 'bottom']}>
       <ScreenHeader title="持股分析" />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 36 }}>
+        <T style={headingFirst}>今日行情</T>
+        <T style={hint}>依今天的報價和你記的庫存整理。只說明帳面變化，不判斷該買或該賣。</T>
+        {today.map((note) => (
+          <View key={note.title} style={card}>
+            <T style={cardTitle}>{note.title}</T>
+            <T style={cardBody}>{note.body}</T>
+          </View>
+        ))}
         {notes.map((note) => (
           <View key={note.title} style={card}>
             <T style={cardTitle}>{note.title}</T>
@@ -67,7 +76,7 @@ export default function AnalysisScreen() {
         {exposures.map((item) => (
           <ExposureRow key={item.symbol} item={item} />
         ))}
-        <T style={disclaimer}>這些是根據你記的帳，以及發行公司公布的持股比重整理的觀察，不是買賣建議。</T>
+        <T style={disclaimer}>這些是根據你記的帳和今天的行情整理的觀察，不是投資建議，也不是叫你買賣。</T>
       </ScrollView>
     </SafeAreaView>
   );
@@ -96,6 +105,7 @@ function ExposureRow({ item }: { item: Exposure }) {
 const card = { backgroundColor: colors.surface, borderRadius: 18, padding: 16, marginBottom: 10 };
 const cardTitle = { color: colors.text, fontSize: 16, fontWeight: '800' as const };
 const cardBody = { marginTop: 6, color: colors.subtle, fontSize: 14, lineHeight: 21 };
+const headingFirst = { color: colors.text, fontSize: 18, fontWeight: '800' as const };
 const heading = { marginTop: 18, color: colors.text, fontSize: 18, fontWeight: '800' as const };
 const hint = { marginTop: 6, marginBottom: 10, color: colors.muted, fontSize: 13, lineHeight: 19 };
 const row = {

@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Switch, View } from 'react-native';
@@ -57,7 +58,7 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <T style={h1}>報價</T>
         <T style={body}>
-          股價來自臺灣證券交易所公開行情。交易日 9:00 到 13:30 約每 20 秒更新，其餘時間約每 3 分鐘更新，回到 App 也會再抓一次。這不是券商下單功能，數字只供自己對帳。
+          股價來自臺灣證券交易所公開行情；若交易所暫時沒回應，會改用另一份報價。交易日 9:00 到 13:35 約每 8 秒更新，其餘時間約每 3 分鐘更新，回到 App 也會再抓一次。這不是券商下單功能，數字只供自己對帳。
         </T>
         <T style={h1}>漲跌提醒</T>
         <View style={row}>
@@ -150,6 +151,13 @@ export default function SettingsScreen() {
         >
           <T style={link}>重新載入範例持股</T>
         </Pressable>
+        <T style={h1}>關於</T>
+        <View style={about}>
+          <T style={aboutName}>我的持股</T>
+          <T style={aboutLine}>版本 {Constants.nativeAppVersion || Constants.expoConfig?.version || '1.5.2'}</T>
+          {Constants.nativeBuildVersion ? <T style={aboutLine}>組建編號 {Constants.nativeBuildVersion}</T> : null}
+          <T style={body}>庫存與交易只存在這台裝置，開發者不會收到你的持股內容。這不是投資建議，也不能下單。</T>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -162,3 +170,6 @@ const row = { flexDirection: 'row' as const, alignItems: 'center' as const, marg
 const button = { marginTop: 16, paddingVertical: 12 };
 const danger = { color: colors.danger, fontWeight: '800' as const, fontSize: 16 };
 const link = { color: colors.blue, fontWeight: '800' as const, fontSize: 16 };
+const about = { marginTop: 8, backgroundColor: colors.surface, borderRadius: 16, padding: 16 };
+const aboutName = { fontSize: 18, fontWeight: '800' as const, color: colors.text };
+const aboutLine = { marginTop: 6, color: colors.subtle, fontWeight: '700' as const };

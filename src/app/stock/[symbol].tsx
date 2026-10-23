@@ -4,7 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { T } from '../../components/Text';
 import { usePortfolio } from '../../hooks/usePortfolio';
+import { breakEvenPrice } from '../../lib/fees';
 import { formatAvg, formatInt, formatMove, formatPct, formatPrice } from '../../lib/format';
+import { portfolioWeight } from '../../lib/holdings';
 import { useStore } from '../../store/useStore';
 import { colors, pnlColor } from '../../theme';
 import type { TxType } from '../../types';
@@ -19,7 +21,8 @@ const ACTIONS: { type: TxType; label: string }[] = [
 export default function StockScreen() {
   const { symbol } = useLocalSearchParams<{ symbol: string }>();
   const code = Array.isArray(symbol) ? symbol[0] : symbol;
-  const { views, positions } = usePortfolio();
+  const { views, positions, summary } = usePortfolio();
+  const settings = useStore((state) => state.settings);
   const transactions = useStore((state) => state.transactions);
   const view = views.find((item) => item.symbol === code);
   const position = positions.find((item) => item.symbol === code);
@@ -35,6 +38,11 @@ export default function StockScreen() {
   }
 
   const name = view?.name ?? position?.name ?? code;
+  const shares = view?.shares ?? position?.shares ?? 0;
+  const totalCost = view?.totalCost ?? position?.totalCost ?? 0;
+  const assetType = view?.assetType ?? position?.assetType ?? 'stock';
+  const even = breakEvenPrice(shares, totalCost, assetType, settings);
+  const weight = portfolioWeight(view?.marketValue ?? null, summary.marketValue);
   const openAdd = (type: TxType) => router.push({ pathname: '/add', params: { type, symbol: code } });
 
   return (
@@ -49,8 +57,10 @@ export default function StockScreen() {
           </T>
         </View>
         <View style={grid}>
-          <Stat label="持股" value={`${formatInt(view?.shares ?? position?.shares ?? 0)} 股`} />
+          <Stat label="持股" value={`${formatInt(shares)} 股`} />
+          <Stat label="佔組合" value={weight == null ? '—' : `${weight.toFixed(1)}%`} />
           <Stat label="市值" value={view?.marketValue == null ? '—' : formatInt(view.marketValue)} />
+          <Stat label="損益兩平價" value={even == null ? '—' : formatPrice(even)} />
           <Stat label="成本均價" value={formatAvg(view?.costAvg ?? null)} />
           <Stat label="買進均價" value={formatAvg(view?.buyAvg ?? null)} />
           <Stat label="持股成本" value={formatInt(view?.totalCost ?? position?.totalCost ?? 0)} />

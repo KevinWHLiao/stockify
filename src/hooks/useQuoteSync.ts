@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
 import { replay, summarize, toView } from '../lib/portfolio';
 import { isMarketOpen, todayTaipei } from '../lib/time';
-import { fetchQuotes, liveQuotesAvailable } from '../services/quotes';
+import { cnyesId } from '../lib/cnyesQuote';
+import { browserQuotesOnly, fetchQuotes, liveQuotesAvailable } from '../services/quotes';
 import { useStore } from '../store/useStore';
 
 let refreshFn: (() => Promise<void>) | null = null;
@@ -45,9 +46,10 @@ export function useQuoteSync() {
       const quotes = await fetchQuotes(requests, (partial) => {
         if (partial.length > 0) setQuotes(partial);
       });
-      if (quotes.length === 0) throw new Error('empty');
+      const expected = browserQuotesOnly() ? requests.filter((item) => cnyesId(item.symbol)).length : positions.length;
+      if (quotes.length === 0 && expected > 0) throw new Error('empty');
       setQuotes(quotes);
-      setQuoteError(quotes.length < positions.length ? '部分股票暫時沒有報價' : null);
+      setQuoteError(quotes.length < expected ? '部分股票暫時沒有報價' : null);
       const quoteMap = new Map(quotes.map((quote) => [quote.symbol, quote]));
       const all = replay(state.transactions, state.settings);
       const views = positions.map((position) => toView(position, quoteMap.get(position.symbol), state.settings));
@@ -101,7 +103,7 @@ export function useQuoteSync() {
         running = false;
       }
       if (stopped) return;
-      timer = setTimeout(tick, isMarketOpen() ? 20000 : 180000);
+      timer = setTimeout(tick, isMarketOpen() ? 8000 : 180000);
     };
 
     void tick();

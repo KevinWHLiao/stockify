@@ -1,12 +1,14 @@
 import { buildSeed } from '../src/data/seed';
 import { priceAlertHits } from '../src/lib/alerts';
-import { analyzeHoldings, lookThrough } from '../src/lib/analysis';
+import { analyzeHoldings, dailyObservations, lookThrough } from '../src/lib/analysis';
 import { portfolioWeight, sortHoldings } from '../src/lib/holdings';
 import { buildBackup, parseBackup } from '../src/lib/backup';
 import { ALL_MARKET_INDICES, SECTOR_HEADLINES } from '../src/data/market';
 import { parseCapitalHoldings, parseMoneyDjHoldings, parseYuantaHoldings } from '../src/lib/etfHoldings';
-import { calcTax } from '../src/lib/fees';
+import { breakEvenPrice, calcTax, estimatedSellCost } from '../src/lib/fees';
 import { quoteFromMis } from '../src/lib/misQuote';
+import { quoteFromCnyes } from '../src/lib/cnyesQuote';
+import { quoteFromYahoo } from '../src/lib/yahooQuote';
 import { replay, toView } from '../src/lib/portfolio';
 import { defaultSettings, type Quote, type Transaction } from '../src/types';
 
@@ -79,6 +81,10 @@ const sellCost = Math.floor(marketValue * 0.001425) + calcTax(marketValue, 'stoc
 close(view.pnl ?? 0, marketValue - wistron.totalCost - sellCost, 'wistron pnl');
 close(view.dailyPnl ?? 0, 0, 'wistron daily');
 assert((view.pnlPct ?? 0) > 70 && (view.pnlPct ?? 0) < 75, 'wistron percent uses buy average');
+const even = breakEvenPrice(1000, 100000, 'stock', settings);
+assert(even != null && even > 100, 'break even is above raw cost');
+const evenValue = 1000 * (even ?? 0);
+assert(evenValue - 100000 - estimatedSellCost(evenValue, 'stock', settings) >= 0, 'selling at break even does not lose');
 
 const manual: Transaction[] = [
   {
@@ -196,6 +202,20 @@ assert(index != null, 'index quote parses without last-trade field');
 close(index?.change ?? 0, -16.18, 'index daily change');
 assert(index?.open != null && index.high != null && index.low != null, 'index keeps open high low');
 
+const yahoo = quoteFromYahoo('2330', 'tse', {
+  regularMarketPrice: 2385,
+  chartPreviousClose: 2420,
+  regularMarketTime: 1792647009,
+  regularMarketVolume: 22651,
+});
+assert(yahoo != null, 'yahoo quote parses');
+close(yahoo?.change ?? 0, -35, 'yahoo daily change');
+assert(yahoo?.date === '20261022' && yahoo.time.startsWith('13:30'), 'yahoo time is Taipei');
+assert(quoteFromYahoo('2330', 'tse', { regularMarketPrice: 0, chartPreviousClose: 2420 }) == null, 'yahoo rejects a zero price');
+const cnyes = quoteFromCnyes('3231', 'tse', { 6: 190, 11: -5, 12: 199, 13: 189.5, 19: 198.5, 21: 195, 56: -2.56, 200007: 1792647000, 200009: '緯創' });
+assert(cnyes != null && cnyes.price === 190 && cnyes.name === '緯創', 'cnyes quote parses');
+close(cnyes?.changePercent ?? 0, -2.56, 'cnyes percent');
+
 const backup = buildBackup({ transactions: seeded, settings, watchlist: [], snapshots: {} }, '2026-10-17T01:00:00.000Z');
 const restored = parseBackup(JSON.stringify(backup));
 assert('file' in restored, 'backup round trip');
@@ -282,6 +302,50 @@ const notes = analyzeHoldings(
   },
 );
 assert(notes.some((note) => note.title.includes('100.0%')), 'analysis flags a single holding');
+const today = dailyObservations(
+  [
+    {
+      symbol: '0050',
+      name: '元大台灣50',
+      market: 'tse',
+      assetType: 'etf',
+      shares: 10,
+      totalCost: 100,
+      buyNotional: 100,
+      buyShares: 10,
+      dividendIncome: 0,
+      realized: 0,
+      price: 20,
+      previousClose: 19,
+      change: 1,
+      changePercent: 5,
+      quoteTime: null,
+      quoteDate: null,
+      marketValue: 200,
+      costAvg: 10,
+      buyAvg: 10,
+      sellCost: 1,
+      pnl: 99,
+      pnlPct: 99,
+      dailyPnl: 10,
+    },
+  ],
+  {
+    marketValue: 200,
+    dailyPnl: 10,
+    unrealized: 99,
+    unrealizedPct: 99,
+    cost: 100,
+    dividendIncome: 0,
+    realized: 0,
+    total: 99,
+    totalPct: 99,
+    priced: 1,
+    held: 1,
+  },
+);
+assert(today.some((note) => note.title.includes('+10')), 'daily note shows today pnl');
+assert(today.some((note) => note.body.includes('不能當作進出場依據')), 'a large daily move is not a trade signal');
 const exposure = lookThrough(
   [
     {

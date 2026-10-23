@@ -80,6 +80,9 @@ export function HoldingRow({ item, weight, onPress }: { item: PositionView; weig
           <T style={[move, { color: priceColor }]}>
             {item.change == null || item.changePercent == null ? '尚無報價' : formatMove(item.change, item.changePercent)}
           </T>
+          {item.dailyPnl == null ? null : (
+            <T style={[move, { color: pnlColor(item.dailyPnl) }]}>今日 {formatInt(item.dailyPnl)}</T>
+          )}
         </View>
       </View>
       <View style={stats}>

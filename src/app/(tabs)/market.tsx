@@ -7,7 +7,7 @@ import { MARKET_INDICES, SECTOR_GROUP_LABEL, SECTOR_HEADLINES, SECTOR_INDICES, t
 import { refreshMarketQuotes, useMarketQuotes } from '../../hooks/useMarketQuotes';
 import { formatMove, formatQuotePrice, formatVolume } from '../../lib/format';
 import { formatQuoteStamp } from '../../lib/time';
-import { searchSymbols } from '../../services/quotes';
+import { browserQuotesOnly, searchSymbols } from '../../services/quotes';
 import { useStore } from '../../store/useStore';
 import type { Quote, SymbolInfo, WatchItem } from '../../types';
 import { colors, pnlColor } from '../../theme';
@@ -100,7 +100,14 @@ export default function MarketScreen() {
         <View style={header}>
           <View style={{ flex: 1 }}>
             <T style={title}>行情</T>
-            <T style={subtitle}>{marketSyncing ? '更新行情中…' : stamp ? `行情 ${stamp}` : '下拉可更新大盤與自選'}</T>
+            <T style={subtitle}>
+              {marketSyncing
+                ? '更新行情中…'
+                : stamp
+                  ? `行情 ${stamp}`
+                  : '下拉可更新大盤與自選'}
+              {browserQuotesOnly() ? '。這個網頁會更新個股與加權指數，類股指數請用手機 App。' : ''}
+            </T>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="加入自選" onPress={() => setPicking(true)} style={iconButton}>
             <Ionicons name="add" size={22} color={colors.text} />

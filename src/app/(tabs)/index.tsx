@@ -10,7 +10,6 @@ import { isDemoTransaction } from '../../data/seed';
 import { backupAgeDays, parseBackup, quotesFromBackup } from '../../lib/backup';
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { refreshQuotes } from '../../hooks/useQuoteSync';
-import { liveQuotesAvailable } from '../../services/quotes';
 import { formatInt, formatPct } from '../../lib/format';
 import { portfolioWeight, sortHoldings } from '../../lib/holdings';
 import type { HoldingSort } from '../../types';
@@ -58,13 +57,9 @@ export default function HoldingsScreen() {
           window.alert(problem);
           return;
         }
-        if (liveQuotesAvailable()) {
-          void refreshQuotes();
-          return;
-        }
         const cached = quotesFromBackup(parsed.file);
         if (cached.length > 0) useStore.getState().setQuotes(cached);
-        useStore.getState().setQuoteError(null);
+        void refreshQuotes();
       });
     };
     input.click();
@@ -94,11 +89,9 @@ export default function HoldingsScreen() {
         {Platform.OS === 'web' ? (
           <View style={banner}>
             <T style={bannerText}>
-              {liveQuotesAvailable()
-                ? showBanner
-                  ? '這是電腦上的持股頁。先在手機按備份、把 JSON 存下來，再選取那個檔，畫面就會換成你的庫存。股價會在這裡重新抓。'
-                  : '這是上次在這台瀏覽器打開的備份。手機有較新的檔時，可以再選一次。'
-                : '選取手機備份的 JSON，就會顯示當時的持股與股價。這個免費網頁不能直接向交易所更新報價，檔案也不會上傳。'}
+              {showBanner
+                ? '選取手機備份的 JSON，畫面就會換成你的庫存，股價也會在這個網頁更新。檔案不會上傳。'
+                : '這是上次在這台瀏覽器打開的備份，股價會繼續更新。手機有較新的檔時，可以再選一次。'}
             </T>
             <Pressable accessibilityRole="button" onPress={openBackup}>
               <T style={bannerAction}>開啟備份檔</T>
@@ -175,7 +168,9 @@ export default function HoldingsScreen() {
               </Pressable>
             )}
           </View>
-          <T style={sectionTotal}>成本 {formatInt(summary.cost)}</T>
+          <T style={sectionTotal}>
+            已實現 {formatInt(summary.realized)} · 成本 {formatInt(summary.cost)}
+          </T>
         </View>
         {views.length > 0 ? (
           <View style={sortRow}>

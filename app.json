@@ -3,7 +3,7 @@
     "name": "我的持股",
     "slug": "stockify",
     "scheme": "stockify",
-    "version": "1.4.0",
+    "version": "1.5.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.stockify.app",
-      "versionCode": 6,
+      "versionCode": 9,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#2F6BFF",
