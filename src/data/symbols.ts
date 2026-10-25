@@ -1,4 +1,5 @@
-import type { AssetType, SymbolInfo } from '../types';
+import { LISTED_NAMES } from './listedNames';
+import type { AssetType, Market, SymbolInfo } from '../types';
 
 export function inferAssetType(symbol: string, name: string): AssetType {
   if (symbol.startsWith('00')) return 'etf';
@@ -112,8 +113,25 @@ export const SYMBOLS: SymbolInfo[] = [
 
 const bySymbol = new Map(SYMBOLS.map((item) => [item.symbol, item]));
 
+const listedBySymbol = new Map(
+  LISTED_NAMES.map(([symbol, name, market]) => {
+    const info = { symbol, name, market: market as Market, assetType: inferAssetType(symbol, name) } satisfies SymbolInfo;
+    return [symbol, info] as const;
+  }),
+);
+
 export function findSymbol(symbol: string) {
-  return bySymbol.get(symbol);
+  return bySymbol.get(symbol) ?? listedBySymbol.get(symbol);
+}
+
+export function searchListedNames(text: string) {
+  const query = text.trim().toLowerCase();
+  if (!query) return [];
+  const hits: SymbolInfo[] = [];
+  for (const item of listedBySymbol.values()) {
+    if (item.symbol.includes(text.trim()) || item.name.toLowerCase().includes(query)) hits.push(item);
+  }
+  return hits;
 }
 
 export function isListedSymbol(symbol: string, name: string) {

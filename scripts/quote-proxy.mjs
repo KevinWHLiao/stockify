@@ -127,6 +127,9 @@ const server = http.createServer((req, res) => {
     target = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp${url.search}`;
   } else if (url.pathname === '/search') {
     target = `https://www.twse.com.tw/rwd/zh/api/codeQuery${url.search}`;
+  } else if (url.pathname === '/search-otc') {
+    target = `https://www.tpex.org.tw/www/zh-tw/api/codeQuery${url.search}`;
+    referer = 'https://www.tpex.org.tw/';
   } else if (url.pathname === '/etf') {
     const next = etfTarget(url);
     if (!next) {

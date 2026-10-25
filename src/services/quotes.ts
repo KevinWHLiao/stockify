@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
-import { findSymbol, inferAssetType, isListedSymbol, SYMBOLS } from '../data/symbols';
+import { findSymbol, inferAssetType, searchListedNames, SYMBOLS } from '../data/symbols';
+import { parseTpexSuggestions, parseTwseSuggestions, rankSymbols } from '../lib/symbolSearch';
 import { quoteFromMis, type MisRow } from '../lib/misQuote';
 import { cnyesId, quoteFromCnyes } from '../lib/cnyesQuote';
 import { quoteFromYahoo, type YahooMeta } from '../lib/yahooQuote';
@@ -36,6 +37,13 @@ function searchUrl(query: string) {
   const origin = apiOrigin();
   if (origin) return `${origin}/search?${encoded}`;
   return `https://www.twse.com.tw/rwd/zh/api/codeQuery?${encoded}`;
+}
+
+function tpexSearchUrl(query: string) {
+  const encoded = `query=${encodeURIComponent(query)}`;
+  const origin = apiOrigin();
+  if (origin) return `${origin}/search-otc?${encoded}`;
+  return `https://www.tpex.org.tw/www/zh-tw/api/codeQuery?${encoded}`;
 }
 
 const BROWSER = {
@@ -204,6 +212,14 @@ const NICKNAMES: Record<string, string> = {
   正2: '006208',
 };
 
+async function searchRemote(url: string, parse: (data: unknown) => SymbolInfo[]) {
+  try {
+    return parse(await getPublicJson(url)).map((item) => findSymbol(item.symbol) ?? item);
+  } catch {
+    return [];
+  }
+}
+
 export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
   const text = query.trim();
   const nickname = findSymbol(NICKNAMES[text.replace(/\s/g, '')] ?? '');
@@ -211,31 +227,13 @@ export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
     if (!text) return true;
     return item.symbol.includes(text) || item.name.toLowerCase().includes(text.toLowerCase());
   });
-  const remote: SymbolInfo[] = [];
-  if (text) {
-    try {
-      const data = await getJson(searchUrl(text));
-      const suggestions = Array.isArray(data?.suggestions) ? (data.suggestions as string[]) : [];
-      for (const suggestion of suggestions) {
-        const [symbol = '', name = ''] = suggestion.split('\t');
-        if (!isListedSymbol(symbol, name)) continue;
-        const known = findSymbol(symbol);
-        remote.push(
-          known ?? {
-            symbol,
-            name,
-            market: 'tse',
-            assetType: inferAssetType(symbol, name),
-          },
-        );
-      }
-    } catch {
-      // 離線時仍可用內建清單與手動代號。
-    }
-  }
+  const listed = text ? searchListedNames(text) : [];
+  const remote = text
+    ? (await Promise.all([searchRemote(searchUrl(text), parseTwseSuggestions), searchRemote(tpexSearchUrl(text), parseTpexSuggestions)])).flat()
+    : [];
   const merged = new Map<string, SymbolInfo>();
   if (nickname) merged.set(nickname.symbol, nickname);
-  for (const item of [...local, ...remote]) {
+  for (const item of [...local, ...listed, ...remote]) {
     if (!merged.has(item.symbol)) merged.set(item.symbol, item);
   }
   if (/^\d{4,6}$/.test(text) && !merged.has(text)) {
@@ -246,5 +244,6 @@ export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
       assetType: inferAssetType(text, ''),
     });
   }
-  return [...merged.values()].slice(0, 40);
+  const items = [...merged.values()];
+  return (text ? rankSymbols(items, text) : items).slice(0, 40);
 }

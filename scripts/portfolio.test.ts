@@ -1,4 +1,6 @@
 import { buildSeed } from '../src/data/seed';
+import { findSymbol } from '../src/data/symbols';
+import { parseTpexSuggestions, rankSymbols } from '../src/lib/symbolSearch';
 import { priceAlertHits } from '../src/lib/alerts';
 import { analyzeHoldings, dailyObservations, lookThrough } from '../src/lib/analysis';
 import { portfolioWeight, sortHoldings } from '../src/lib/holdings';
@@ -400,5 +402,24 @@ const alerts = priceAlertHits(
 );
 assert(alerts.length === 1 && alerts[0]?.key === '2026-10-18:2330:up', 'alert fires once past the threshold');
 assert(priceAlertHits([{ symbol: '2330', name: '台積電', change: 20, changePercent: 3.2 }], 3, '2026-10-18', [alerts[0].key]).length === 0, 'same direction is not repeated');
+
+const zhujian = must(findSymbol('7723'), '築間 is in the OTC directory');
+assert(zhujian.name === '築間' && zhujian.market === 'otc', '築間 is an OTC stock');
+const parsed = parseTpexSuggestions({
+  suggestions: [
+    { type: '上櫃公司', data: ['7723 築間\t7723'] },
+    { type: '創櫃公司', data: ['7600 大麥網路\t7600'] },
+    { type: '您是否在找以下資訊', data: ['興櫃股票市況報導\thttps://mis.tpex.org.tw/'] },
+  ],
+});
+assert(parsed.length === 1 && parsed[0]?.symbol === '7723' && parsed[0].market === 'otc', 'OTC search keeps cabinet stocks');
+const nameRank = rankSymbols(
+  [
+    { symbol: '1234', name: '築間食品', market: 'tse', assetType: 'stock' },
+    zhujian,
+  ],
+  '築間',
+);
+assert(nameRank[0]?.symbol === '7723', 'exact company name ranks first');
 
 console.log('portfolio checks passed');

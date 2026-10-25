@@ -370,7 +370,7 @@ function SymbolPicker({
           </Pressable>
         </View>
         <View style={{ paddingHorizontal: 16 }}>
-          <FieldInput autoFocus value={query} onChangeText={setQuery} placeholder="代號或名稱，例如 2330、台積電" autoCapitalize="none" autoCorrect={false} />
+          <FieldInput autoFocus value={query} onChangeText={setQuery} placeholder="代號或名稱，例如 2330、台積電、築間" autoCapitalize="none" autoCorrect={false} />
         </View>
         <FlatList
           data={results}
