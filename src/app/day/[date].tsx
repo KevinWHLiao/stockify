@@ -6,7 +6,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { T } from '../../components/Text';
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { formatInt, formatMove, formatPrice, maskMoney } from '../../lib/format';
-import { formatDateLabel, todayTaipei } from '../../lib/time';
+import { formatDateLabel, isQuoteSessionToday, isWeekendDate, todayTaipei } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { colors, pnlColor } from '../../theme';
 
@@ -22,7 +22,10 @@ export default function DayScreen() {
   );
   const { summary, views } = usePortfolio();
   const live = date === todayTaipei();
-  const items = live
+  const closed = Boolean(date && (isWeekendDate(date) || (live && !views.some((view) => isQuoteSessionToday(view.quoteDate)))));
+  const items = closed
+    ? []
+    : live
     ? views
         .filter((view) => view.price != null)
         .map((view) => ({
@@ -47,10 +50,10 @@ export default function DayScreen() {
         <View style={{ paddingHorizontal: 20 }}>
           <T style={{ color: colors.muted }}>{formatDateLabel(date)}</T>
           <T style={[hero, { color: hidden || !items.length ? colors.flat : pnlColor(totalDaily) }]}>{items.length ? maskMoney(hidden, formatInt(totalDaily)) : '—'}</T>
-          <T style={{ color: colors.muted }}>{items.length ? `收盤市值 ${maskMoney(hidden, formatInt(totalValue))}` : '這天沒有行情快照'}</T>
+          <T style={{ color: colors.muted }}>{items.length ? `收盤市值 ${maskMoney(hidden, formatInt(totalValue))}` : closed ? '這天沒有交易，不記入當日損益' : '這天沒有行情快照'}</T>
         </View>
         <T style={section}>持股當日損益</T>
-        {items.length === 0 ? <T style={empty}>連線更新後才會留下當天股價。手動紀錄仍會列在下面。</T> : null}
+        {items.length === 0 && !closed ? <T style={empty}>連線更新後才會留下當天股價。手動紀錄仍會列在下面。</T> : null}
         {items.map((item) => (
           <View key={item.symbol} style={row}>
             <View style={{ flex: 1 }}>

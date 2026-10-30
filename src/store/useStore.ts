@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { DEFAULT_WATCHLIST } from '../data/market';
 import { buildSeed } from '../data/seed';
 import { ledgerError } from '../lib/portfolio';
+import { isWeekendDate } from '../lib/time';
 import type { DaySnapshot, Quote, Settings, Transaction, WatchItem } from '../types';
 import { defaultSettings } from '../types';
 
@@ -56,7 +57,9 @@ interface Store {
 }
 
 function trimSnapshots(snapshots: Record<string, DaySnapshot>) {
-  const entries = Object.entries(snapshots).sort(([a], [b]) => (a < b ? -1 : 1));
+  const entries = Object.entries(snapshots)
+    .filter(([date]) => !isWeekendDate(date))
+    .sort(([a], [b]) => (a < b ? -1 : 1));
   return Object.fromEntries(entries.slice(-365));
 }
 
@@ -174,7 +177,7 @@ export const useStore = create<Store>()(
           quotes: saved.quotes ?? {},
           marketQuotes: saved.marketQuotes ?? {},
           watchlist: saved.watchlist?.length ? saved.watchlist : DEFAULT_WATCHLIST,
-          snapshots: saved.snapshots ?? {},
+          snapshots: trimSnapshots(saved.snapshots ?? {}),
           lastSyncAt: saved.lastSyncAt ?? null,
           initialized: true,
           hydrated: false,

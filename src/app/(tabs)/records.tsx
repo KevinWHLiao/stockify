@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Platform, Pressable, SectionList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { T } from '../../components/Text';
-import { formatDateLabel } from '../../lib/time';
+import { formatDateLabel, isWeekendDate } from '../../lib/time';
 import { cashEffect } from '../../lib/portfolio';
 import { formatAvg, formatInt, formatPrice, maskMoney } from '../../lib/format';
 import { useStore } from '../../store/useStore';
@@ -48,7 +48,7 @@ export default function RecordsScreen() {
   }, [transactions, filter]);
 
   const days = useMemo(
-    () => Object.values(snapshots).sort((a, b) => (a.date < b.date ? 1 : -1)),
+    () => Object.values(snapshots).filter((item) => !isWeekendDate(item.date)).sort((a, b) => (a.date < b.date ? 1 : -1)),
     [snapshots],
   );
 
@@ -99,7 +99,7 @@ export default function RecordsScreen() {
           ListEmptyComponent={
             <View style={empty}>
               <T style={emptyTitle}>還沒有每日損益</T>
-              <T style={emptyBody}>連線更新後，會從今天開始留下每天的持股損益。</T>
+              <T style={emptyBody}>連線更新後，會留下每個交易日的持股損益。週六、週日與還沒有成交的日子不會列入。</T>
             </View>
           }
           renderItem={({ item }) => (

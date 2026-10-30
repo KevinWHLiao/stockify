@@ -166,7 +166,7 @@ export default function SettingsScreen() {
         <T style={h1}>關於</T>
         <View style={about}>
           <T style={aboutName}>我的持股</T>
-          <T style={aboutLine}>版本 {Constants.nativeAppVersion || Constants.expoConfig?.version || '1.5.4'}</T>
+          <T style={aboutLine}>版本 {Constants.nativeAppVersion || Constants.expoConfig?.version || '1.5.5'}</T>
           {Constants.nativeBuildVersion ? <T style={aboutLine}>組建編號 {Constants.nativeBuildVersion}</T> : null}
           <T style={body}>庫存與交易只存在這台裝置，開發者不會收到你的持股內容。這不是投資建議，也不能下單。</T>
         </View>

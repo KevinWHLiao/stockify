@@ -1,5 +1,6 @@
 import type { Position, PositionView, Quote, Settings, Transaction } from '../types';
 import { estimatedSellCost } from './fees';
+import { isQuoteSessionToday } from './time';
 
 const EPS = 1e-6;
 
@@ -139,7 +140,7 @@ export function toView(position: Position, quote: Quote | undefined, settings: S
     sellCost,
     pnl,
     pnlPct: base > EPS ? (pnl / base) * 100 : null,
-    dailyPnl: quote.change * position.shares,
+    dailyPnl: isQuoteSessionToday(quote.date) ? quote.change * position.shares : null,
   };
 }
 

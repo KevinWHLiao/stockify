@@ -9,6 +9,21 @@ export function todayTaipei(now = new Date()) {
   }).format(now);
 }
 
+export function isWeekendDate(iso: string) {
+  const [year, month, day] = iso.split('-').map(Number);
+  if (!year || !month || !day) return false;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+  const weekday = date.getDay();
+  return weekday === 0 || weekday === 6;
+}
+
+export function isQuoteSessionToday(quoteDate: string | null | undefined, now = new Date()) {
+  if (!quoteDate || quoteDate.length !== 8) return false;
+  const [year, month, day] = todayTaipei(now).split('-');
+  return quoteDate === `${year}${month}${day}`;
+}
+
 export function isMarketOpen(now = new Date()) {
   const weekday = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Taipei',

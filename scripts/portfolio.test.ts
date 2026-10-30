@@ -12,6 +12,7 @@ import { quoteFromMis } from '../src/lib/misQuote';
 import { quoteFromCnyes } from '../src/lib/cnyesQuote';
 import { quoteFromYahoo } from '../src/lib/yahooQuote';
 import { replay, toView } from '../src/lib/portfolio';
+import { isQuoteSessionToday, isWeekendDate, todayTaipei } from '../src/lib/time';
 import { defaultSettings, type Quote, type Transaction } from '../src/types';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -82,6 +83,10 @@ const marketValue = 5000 * 189.5;
 const sellCost = Math.floor(marketValue * 0.001425) + calcTax(marketValue, 'stock');
 close(view.pnl ?? 0, marketValue - wistron.totalCost - sellCost, 'wistron pnl');
 close(view.dailyPnl ?? 0, 0, 'wistron daily');
+assert(isWeekendDate('2026-10-31') && isWeekendDate('2026-11-01') && !isWeekendDate('2026-10-30'), 'weekends are not trading days');
+assert(toView(wistron, { ...quote, change: 8, date: '20200101' }, settings).dailyPnl == null, 'old session is not counted again');
+close(toView(wistron, { ...quote, change: 8, date: todayTaipei().replace(/-/g, '') }, settings).dailyPnl ?? 0, 8 * wistron.shares, 'today session is counted');
+assert(isQuoteSessionToday(todayTaipei().replace(/-/g, '')), 'today quote date matches');
 assert((view.pnlPct ?? 0) > 70 && (view.pnlPct ?? 0) < 75, 'wistron percent uses buy average');
 const even = breakEvenPrice(1000, 100000, 'stock', settings);
 assert(even != null && even > 100, 'break even is above raw cost');

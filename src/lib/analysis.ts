@@ -1,6 +1,7 @@
 import type { PositionView } from '../types';
 import { isTaiwanSymbol, type EtfConstituent } from './etfHoldings';
 import { formatInt } from './format';
+import { isQuoteSessionToday } from './time';
 import type { Summary } from './portfolio';
 
 export interface AnalysisNote {
@@ -78,6 +79,9 @@ export function analyzeHoldings(views: PositionView[], summary: Summary): Analys
 
 export function dailyObservations(views: PositionView[], summary: Summary): AnalysisNote[] {
   const priced = views.filter((view) => view.price != null && (view.marketValue ?? 0) > 0 && view.changePercent != null);
+  if (priced.length > 0 && priced.every((view) => view.quoteDate && !isQuoteSessionToday(view.quoteDate))) {
+    return [{ title: '今天沒有交易', body: '這天沒有新的成交，沿用的收盤價不會再計一次損益。' }];
+  }
   if (priced.length === 0 || summary.marketValue <= 0) {
     return [{ title: '今天還沒有可用的行情', body: '報價更新後，這裡會依今天的漲跌整理觀察，不會判斷該買或該賣。' }];
   }
