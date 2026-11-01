@@ -443,6 +443,7 @@ const session = parseTwseSession(
           ['1101', '台泥', '20,000,000', '', '', '', '', '', '40', "<p style='color:red'>+</p>", '1', '', '', '', '', ''],
           ['9999', '冷門', '100', '', '', '', '', '', '10', "<p style='color:red'>+</p>", '1', '', '', '', '', ''],
           ['0050', '元大台灣50ETF', '20,000,000', '', '', '', '', '', '100', "<p style='color:red'>+</p>", '1', '', '', '', '', ''],
+          ['00907', '永豐優息存股', '20,000,000', '', '', '', '', '', '20', '', '0', '', '', '', '', ''],
         ],
       },
     ],
@@ -452,7 +453,7 @@ const session = parseTwseSession(
 if (!session) throw new Error('session parses');
 const board = relativeStrength(session.indexPercent, session.stocks, '2026-10-30');
 assert(board.dropped && board.risers[0]?.symbol === '1101', 'a down day lists stocks that rose');
-assert(board.risers.every((item) => item.symbol !== '0050' && item.symbol !== '9999'), 'illiquid names and ETFs are left out');
+assert(board.risers.every((item) => item.symbol !== '0050' && item.symbol !== '9999') && board.resilient.every((item) => item.symbol !== '00907'), 'illiquid names and ETFs are left out');
 assert(board.resilient[0]?.symbol === '2330', 'a smaller drop than the index is resilient');
 const calm = relativeStrength(-0.4, session.stocks, '2026-10-30');
 assert(!calm.dropped && calm.risers.length === 0, 'a mild day does not list names');

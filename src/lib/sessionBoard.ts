@@ -48,7 +48,7 @@ export function parseTwseSession(data: unknown, date: string): Omit<SessionStren
     const row = cells(raw);
     const symbol = row[0] ?? '';
     const name = (row[1] ?? '').trim();
-    if (!/^\d{4,6}$/.test(symbol)) continue;
+    if (!/^\d{4,6}$/.test(symbol) || symbol.startsWith('00')) continue;
     if (/ETF|指數|槓桿|反向/.test(name)) continue;
     const volume = plainNumber(row[2] ?? '');
     const close = plainNumber(row[8] ?? '');
