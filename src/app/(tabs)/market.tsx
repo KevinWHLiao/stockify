@@ -3,10 +3,13 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MARKET_INDICES, SECTOR_GROUP_LABEL, SECTOR_HEADLINES, SECTOR_INDICES, type SectorGroup } from '../../data/market';
+import { MARKET_INDICES, SECTOR_GROUP_LABEL, SECTOR_HEADLINES, SECTOR_INDICES, US_INDICES, type SectorGroup } from '../../data/market';
+import { usePortfolio } from '../../hooks/usePortfolio';
 import { refreshMarketQuotes, useMarketQuotes } from '../../hooks/useMarketQuotes';
-import { formatMove, formatQuotePrice, formatVolume } from '../../lib/format';
-import { formatQuoteStamp } from '../../lib/time';
+import { formatMove, formatPct, formatQuotePrice, formatVolume } from '../../lib/format';
+import type { SessionStrength } from '../../lib/sessionBoard';
+import { formatDateLabel, formatQuoteStamp } from '../../lib/time';
+import { fetchLatestSession } from '../../services/sessionBoard';
 import { browserQuotesOnly, searchSymbols } from '../../services/quotes';
 import { useStore } from '../../store/useStore';
 import type { Quote, SymbolInfo, WatchItem } from '../../types';
@@ -26,6 +29,19 @@ export default function MarketScreen() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SymbolInfo[]>([]);
   const [sectorFilter, setSectorFilter] = useState<'all' | SectorGroup>('all');
+  const [session, setSession] = useState<SessionStrength | null>(null);
+  const [sessionState, setSessionState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const { views } = usePortfolio();
+  const held = useMemo(() => new Set(views.filter((view) => view.shares > 0).map((view) => view.symbol)), [views]);
+
+  const usIndices = useMemo(
+    () =>
+      US_INDICES.map((item) => ({
+        meta: item,
+        quote: marketQuotes[item.symbol],
+      })),
+    [marketQuotes],
+  );
 
   const indices = useMemo(
     () =>
@@ -74,6 +90,20 @@ export default function MarketScreen() {
     return withTime ? formatQuoteStamp(withTime.date, withTime.time) : '';
   }, [marketQuotes]);
 
+  const loadSession = async () => {
+    try {
+      const next = await fetchLatestSession();
+      setSession(next);
+      setSessionState(next ? 'ready' : 'error');
+    } catch {
+      setSessionState('error');
+    }
+  };
+
+  useEffect(() => {
+    void loadSession();
+  }, []);
+
   useEffect(() => {
     if (!picking) return;
     let cancelled = false;
@@ -87,7 +117,7 @@ export default function MarketScreen() {
 
   const onRefresh = async () => {
     setPulling(true);
-    await refreshMarketQuotes();
+    await Promise.all([refreshMarketQuotes(), loadSession()]);
     setPulling(false);
   };
 
@@ -106,7 +136,7 @@ export default function MarketScreen() {
                 : stamp
                   ? `行情 ${stamp}`
                   : '下拉可更新大盤與自選'}
-              {browserQuotesOnly() ? '。這個網頁會更新個股與加權指數，類股指數請用手機 App。' : ''}
+              {browserQuotesOnly() ? '。這個網頁會更新個股、加權與美股指數，類股指數請用手機 App。' : ''}
             </T>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="加入自選" onPress={() => setPicking(true)} style={iconButton}>
@@ -127,6 +157,18 @@ export default function MarketScreen() {
             />
           ))}
         </View>
+
+        <T style={section}>美股指數</T>
+        <T style={sectorNote}>道瓊、標普 500、那斯達克、費城半導體。交易時段跟台股不同，收盤後才是完整的一天。</T>
+        <View style={indexGrid}>
+          {usIndices.map(({ meta, quote }) => (
+            <IndexCard key={meta.symbol} shortName={meta.shortName} quote={quote} />
+          ))}
+        </View>
+
+        <T style={section}>大跌日相對強勢</T>
+        <T style={sectorNote}>加權跌超過 1% 時，列出成交較活的上市股票裡，收紅或跌得比大盤少的名字。這是收盤漲跌整理，不是投資建議，也不是叫你買賣。上櫃不在這張表。</T>
+        <SessionBoard board={session} state={sessionState} held={held} />
 
         <View style={sectionRow}>
           <T style={sectionTitle}>類股表現</T>
@@ -281,19 +323,76 @@ export default function MarketScreen() {
   );
 }
 
-function IndexCard({ shortName, quote, onPress }: { shortName: string; quote?: Quote; onPress: () => void }) {
+function IndexCard({ shortName, quote, onPress }: { shortName: string; quote?: Quote; onPress?: () => void }) {
   const tone = pnlColor(quote?.change);
+  const body = (
+    <>
+      <T style={indexLabel}>{shortName}</T>
+      <T style={[indexPrice, { color: quote ? tone : colors.flat }]} numberOfLines={1} adjustsFontSizeToFit>
+        {quote ? formatQuotePrice(quote.price) : '—'}
+      </T>
+      <T style={[indexMove, { color: quote ? tone : colors.flat }]}>
+        {quote ? formatMove(quote.change, quote.changePercent) : '尚無報價'}
+      </T>
+    </>
+  );
   return (
     <View style={indexCard}>
-      <Pressable accessibilityRole="button" accessibilityLabel={shortName} onPress={onPress} style={indexInner}>
-        <T style={indexLabel}>{shortName}</T>
-        <T style={[indexPrice, { color: quote ? tone : colors.flat }]} numberOfLines={1} adjustsFontSizeToFit>
-          {quote ? formatQuotePrice(quote.price) : '—'}
-        </T>
-        <T style={[indexMove, { color: quote ? tone : colors.flat }]}>
-          {quote ? formatMove(quote.change, quote.changePercent) : '尚無報價'}
-        </T>
-      </Pressable>
+      {onPress ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={shortName} onPress={onPress} style={indexInner}>
+          {body}
+        </Pressable>
+      ) : (
+        <View style={indexInner}>{body}</View>
+      )}
+    </View>
+  );
+}
+
+function SessionBoard({ board, state, held }: { board: SessionStrength | null; state: 'loading' | 'ready' | 'error'; held: Set<string> }) {
+  if (state === 'loading') return <T style={sessionStatus}>讀取最近一個交易日的收盤…</T>;
+  if (state === 'error' || !board) return <T style={sessionStatus}>暫時讀不到上市收盤表。</T>;
+  if (!board.dropped) {
+    return (
+      <T style={sessionStatus}>
+        {formatDateLabel(board.date)} 加權 {formatPct(board.indexPercent)}，沒有跌超過 1%，所以不列名單。
+      </T>
+    );
+  }
+  return (
+    <View>
+      <T style={sessionStatus}>
+        {formatDateLabel(board.date)} 加權 {formatPct(board.indexPercent)}
+      </T>
+      <MoverGroup title="逆勢上漲" items={board.risers} held={held} empty="這天沒有成交夠活、而且收紅的股票。" />
+      <MoverGroup title="跌得比大盤少" items={board.resilient} held={held} empty="這天沒有明顯少跌、成交又夠活的股票。" />
+    </View>
+  );
+}
+
+function MoverGroup({ title, items, held, empty }: { title: string; items: SessionStrength['risers']; held: Set<string>; empty: string }) {
+  return (
+    <View>
+      <T style={groupLabel}>{title}</T>
+      {items.length === 0 ? <T style={sessionStatus}>{empty}</T> : null}
+      {items.map((item) => (
+        <Pressable
+          key={item.symbol}
+          accessibilityRole="button"
+          accessibilityLabel={item.name}
+          onPress={() => router.push({ pathname: '/quote/[symbol]', params: { symbol: item.symbol } })}
+          style={sectorRow}
+        >
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <T style={rowName}>
+              {item.name}
+              {held.has(item.symbol) ? ' · 持股' : ''}
+            </T>
+            <T style={rowMeta}>{item.symbol}</T>
+          </View>
+          <T style={[watchMove, { color: pnlColor(item.changePercent) }]}>{formatPct(item.changePercent)}</T>
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -371,6 +470,7 @@ const sectionRow = {
 const sectionTitle = { fontSize: 16, fontWeight: '800' as const, color: colors.text };
 const sectionHint = { color: colors.muted, fontSize: 13, fontWeight: '600' as const };
 const sectorNote = { marginHorizontal: 20, marginTop: -4, marginBottom: 10, color: colors.muted, fontSize: 12, lineHeight: 18 };
+const sessionStatus = { marginHorizontal: 20, marginBottom: 8, color: colors.subtle, fontSize: 13, lineHeight: 20 };
 const headlineRow = { flexDirection: 'row' as const, paddingHorizontal: 16, gap: 8 };
 const headlineCard = {
   flex: 1,

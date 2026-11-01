@@ -63,6 +63,14 @@ export const SECTOR_INDICES: SectorIndex[] = [
   { symbol: 't20', name: '其他類指數', shortName: '其他', market: 'tse', group: 'traditional' },
 ];
 
+/** 台灣慣稱的美股四大指數：道瓊、標普 500、那斯達克、費城半導體。 */
+export const US_INDICES: MarketIndex[] = [
+  { symbol: 'us-dji', name: '道瓊工業指數', shortName: '道瓊', market: 'tse' },
+  { symbol: 'us-spx', name: '標普 500', shortName: '標普500', market: 'tse' },
+  { symbol: 'us-ixic', name: '那斯達克綜合', shortName: '那斯達克', market: 'tse' },
+  { symbol: 'us-sox', name: '費城半導體', shortName: '費半', market: 'tse' },
+];
+
 export const ALL_MARKET_INDICES: MarketIndex[] = [...MARKET_INDICES, ...SECTOR_HEADLINES, ...SECTOR_INDICES];
 
 export function findMarketIndex(symbol: string) {

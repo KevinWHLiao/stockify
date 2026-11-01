@@ -9,7 +9,8 @@ import { ALL_MARKET_INDICES, SECTOR_HEADLINES } from '../src/data/market';
 import { parseCapitalHoldings, parseMoneyDjHoldings, parseYuantaHoldings } from '../src/lib/etfHoldings';
 import { breakEvenPrice, calcTax, estimatedSellCost } from '../src/lib/fees';
 import { quoteFromMis } from '../src/lib/misQuote';
-import { quoteFromCnyes } from '../src/lib/cnyesQuote';
+import { cnyesId, quoteFromCnyes } from '../src/lib/cnyesQuote';
+import { parseTwseSession, relativeStrength } from '../src/lib/sessionBoard';
 import { quoteFromYahoo } from '../src/lib/yahooQuote';
 import { replay, toView } from '../src/lib/portfolio';
 import { isQuoteSessionToday, isWeekendDate, todayTaipei } from '../src/lib/time';
@@ -426,5 +427,34 @@ const nameRank = rankSymbols(
   '築間',
 );
 assert(nameRank[0]?.symbol === '7723', 'exact company name ranks first');
+
+assert(cnyesId('us-sox') === 'GI:SOX:INDEX' && cnyesId('us-dji') === 'GI:DJI:INDEX', 'US indices use the public quote ids');
+const session = parseTwseSession(
+  {
+    tables: [
+      {
+        fields: ['指數', '收盤指數', '漲跌(+/-)', '漲跌點數', '漲跌百分比(%)'],
+        data: [['發行量加權股價指數', '45,211.83', "<p style='color:green'>-</p>", '1,156.50', '-2.49']],
+      },
+      {
+        title: '每日收盤行情',
+        data: [
+          ['2330', '台積電', '20,000,000', '', '', '', '', '', '1000', "<p style='color:green'>-</p>", '5', '', '', '', '', ''],
+          ['1101', '台泥', '20,000,000', '', '', '', '', '', '40', "<p style='color:red'>+</p>", '1', '', '', '', '', ''],
+          ['9999', '冷門', '100', '', '', '', '', '', '10', "<p style='color:red'>+</p>", '1', '', '', '', '', ''],
+          ['0050', '元大台灣50ETF', '20,000,000', '', '', '', '', '', '100', "<p style='color:red'>+</p>", '1', '', '', '', '', ''],
+        ],
+      },
+    ],
+  },
+  '2026-10-30',
+);
+if (!session) throw new Error('session parses');
+const board = relativeStrength(session.indexPercent, session.stocks, '2026-10-30');
+assert(board.dropped && board.risers[0]?.symbol === '1101', 'a down day lists stocks that rose');
+assert(board.risers.every((item) => item.symbol !== '0050' && item.symbol !== '9999'), 'illiquid names and ETFs are left out');
+assert(board.resilient[0]?.symbol === '2330', 'a smaller drop than the index is resilient');
+const calm = relativeStrength(-0.4, session.stocks, '2026-10-30');
+assert(!calm.dropped && calm.risers.length === 0, 'a mild day does not list names');
 
 console.log('portfolio checks passed');

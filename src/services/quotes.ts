@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { findSymbol, inferAssetType, searchListedNames, SYMBOLS } from '../data/symbols';
 import { parseTpexSuggestions, parseTwseSuggestions, rankSymbols } from '../lib/symbolSearch';
 import { quoteFromMis, type MisRow } from '../lib/misQuote';
-import { cnyesId, quoteFromCnyes } from '../lib/cnyesQuote';
+import { cnyesId, cnyesRowCode, quoteFromCnyes } from '../lib/cnyesQuote';
 import { quoteFromYahoo, type YahooMeta } from '../lib/yahooQuote';
 import type { Market, Quote, SymbolInfo } from '../types';
 
@@ -152,7 +152,7 @@ async function getPublicJson(url: string) {
   }
 }
 
-async function fetchHostedQuotes(items: { symbol: string; market: Market }[], onUpdate?: (quotes: Quote[]) => void) {
+export async function fetchCnyesQuotes(items: { symbol: string; market: Market }[], onUpdate?: (quotes: Quote[]) => void) {
   const wanted = items.flatMap((item) => {
     const id = cnyesId(item.symbol);
     return id ? [{ ...item, id }] : [];
@@ -165,7 +165,7 @@ async function fetchHostedQuotes(items: { symbol: string; market: Market }[], on
       const rows = Array.isArray(data?.data) ? (data.data as Record<string, unknown>[]) : [];
       const byCode = new Map(rows.map((row) => [String(row['200010'] ?? ''), row]));
       for (const item of group) {
-        const row = item.symbol === 't00' ? rows.find((entry) => entry['200010'] === 'TWII') : byCode.get(item.symbol);
+        const row = byCode.get(cnyesRowCode(item.symbol));
         const quote = quoteFromCnyes(item.symbol, item.market, row);
         if (!quote) continue;
         quotes.push({ ...quote, name: findSymbol(item.symbol)?.name || quote.name });
@@ -185,7 +185,7 @@ export async function fetchQuotes(
   const unique = new Map<string, { symbol: string; market: Market }>();
   for (const request of requests) unique.set(request.symbol, request);
   const items = [...unique.values()];
-  if (browserQuotesOnly()) return fetchHostedQuotes(items, onUpdate);
+  if (browserQuotesOnly()) return fetchCnyesQuotes(items, onUpdate);
   const first = await fetchWave(items);
   let quotes = first.quotes;
   if (quotes.length > 0) onUpdate?.(quotes);

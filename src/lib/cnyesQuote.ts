@@ -5,10 +5,25 @@ function num(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+const US_INDEX_IDS: Record<string, string> = {
+  'us-dji': 'GI:DJI:INDEX',
+  'us-spx': 'GI:INX:INDEX',
+  'us-ixic': 'GI:IXIC:INDEX',
+  'us-sox': 'GI:SOX:INDEX',
+};
+
 export function cnyesId(symbol: string) {
   if (symbol === 't00') return 'TWS:TWII:INDEX';
+  if (US_INDEX_IDS[symbol]) return US_INDEX_IDS[symbol];
   if (/^\d{4,6}$/.test(symbol)) return `TWS:${symbol}:STOCK`;
   return null;
+}
+
+export function cnyesRowCode(symbol: string) {
+  if (symbol === 't00') return 'TWII';
+  const id = cnyesId(symbol);
+  if (!id) return symbol;
+  return id.split(':')[1] || symbol;
 }
 
 export function quoteFromCnyes(symbol: string, market: Market, row: Record<string, unknown> | null | undefined): Quote | null {

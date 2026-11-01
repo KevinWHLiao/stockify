@@ -1,10 +1,10 @@
 import { useCallback, useEffect } from 'react';
 import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { ALL_MARKET_INDICES } from '../data/market';
+import { ALL_MARKET_INDICES, US_INDICES } from '../data/market';
 import { isMarketOpen } from '../lib/time';
 import { cnyesId } from '../lib/cnyesQuote';
-import { browserQuotesOnly, fetchQuotes, liveQuotesAvailable } from '../services/quotes';
+import { browserQuotesOnly, fetchCnyesQuotes, fetchQuotes, liveQuotesAvailable } from '../services/quotes';
 import { useStore } from '../store/useStore';
 
 let refreshFn: (() => Promise<void>) | null = null;
@@ -32,9 +32,14 @@ export function useMarketQuotes(active: boolean) {
     if (items.length === 0) return;
     setMarketSyncing(true);
     try {
-      const quotes = await fetchQuotes(items, (partial) => {
-        if (partial.length > 0) setMarketQuotes(partial);
-      });
+      const usItems = US_INDICES.map((item) => ({ symbol: item.symbol, market: item.market }));
+      const [quotes, usQuotes] = await Promise.all([
+        fetchQuotes(items, (partial) => {
+          if (partial.length > 0) setMarketQuotes(partial);
+        }),
+        fetchCnyesQuotes(usItems).catch(() => []),
+      ]);
+      if (usQuotes.length > 0) setMarketQuotes(usQuotes);
       const expected = browserQuotesOnly() ? items.filter((item) => cnyesId(item.symbol)).length : items.length;
       if (quotes.length === 0 && expected > 0) throw new Error('empty');
       setMarketQuotes(quotes);
