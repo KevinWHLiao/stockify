@@ -1,5 +1,5 @@
 import { parseTwseSession, relativeStrength, type SessionStrength } from '../lib/sessionBoard';
-import { isWeekendDate, shiftDate, todayTaipei } from '../lib/time';
+import { isMarketClosed, shiftDate, todayTaipei } from '../lib/time';
 
 async function getJson(url: string) {
   const controller = new AbortController();
@@ -16,7 +16,7 @@ async function getJson(url: string) {
 export async function fetchLatestSession(now = new Date()): Promise<SessionStrength | null> {
   let date = todayTaipei(now);
   for (let attempt = 0; attempt < 12; attempt += 1) {
-    if (!isWeekendDate(date)) {
+    if (!isMarketClosed(date)) {
       try {
         const data = await getJson(
           `https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=${date.replace(/-/g, '')}&type=ALLBUT0999&response=json`,

@@ -5,6 +5,7 @@ import { FlatList, Modal, Platform, Pressable, RefreshControl, ScrollView, View 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MARKET_INDICES, SECTOR_GROUP_LABEL, SECTOR_HEADLINES, SECTOR_INDICES, US_INDICES, type SectorGroup } from '../../data/market';
 import { usePortfolio } from '../../hooks/usePortfolio';
+import { refreshQuotes } from '../../hooks/useQuoteSync';
 import { refreshMarketQuotes, useMarketQuotes } from '../../hooks/useMarketQuotes';
 import { formatMove, formatPct, formatQuotePrice, formatVolume } from '../../lib/format';
 import type { SessionStrength } from '../../lib/sessionBoard';
@@ -139,9 +140,14 @@ export default function MarketScreen() {
               {browserQuotesOnly() ? '。這個網頁會更新個股、加權與美股指數，類股指數請用手機 App。' : ''}
             </T>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="加入自選" onPress={() => setPicking(true)} style={iconButton}>
-            <Ionicons name="add" size={22} color={colors.text} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable accessibilityRole="button" accessibilityLabel="立即更新股價" onPress={() => void onRefresh()} style={iconButton}>
+              <Ionicons name="refresh" size={20} color={colors.text} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="加入自選" onPress={() => setPicking(true)} style={iconButton}>
+              <Ionicons name="add" size={22} color={colors.text} />
+            </Pressable>
+          </View>
         </View>
 
         {marketError ? <T style={errorText}>{marketError}</T> : null}

@@ -74,7 +74,7 @@ export function useMarketQuotes(active: boolean) {
           running = false;
         }
         if (stopped) return;
-        timer = setTimeout(tick, isMarketOpen() ? 8000 : 180000);
+        timer = setTimeout(tick, isMarketOpen() ? 3000 : 180000);
       };
 
       void tick();

@@ -142,17 +142,14 @@ export default function HoldingsScreen() {
               <T style={[heroPct, { color: hidden ? '#fff' : hasPrice ? pnlColor(headline) : '#fff' }]}>{maskMoney(hidden, hasPrice ? formatPct(headlinePct) : '—')}</T>
             </View>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="更新報價" onPress={() => void onRefresh()}>
+          <View style={syncRow}>
+            <Pressable accessibilityRole="button" accessibilityLabel="立即更新股價" disabled={syncing || pulling} onPress={() => void onRefresh()} style={syncButton}>
+              <T style={syncButtonText}>{syncing || pulling ? '更新中' : '立即更新'}</T>
+            </Pressable>
             <T style={syncText}>
-              {syncing && latest
-                ? `更新中，先顯示 ${formatQuoteStamp(latest.date, latest.time)}`
-                : syncing
-                  ? '更新報價中…'
-                  : latest
-                    ? `報價 ${formatQuoteStamp(latest.date, latest.time)}`
-                    : '尚未取得報價'}
+              {latest ? `報價 ${formatQuoteStamp(latest.date, latest.time)}` : '尚未取得報價'}
             </T>
-          </Pressable>
+          </View>
         </View>
 
         <View style={[metrics, Platform.OS === 'web' && webMetrics]}>
@@ -275,7 +272,10 @@ const heroNumbers = { flexDirection: 'row' as const, alignItems: 'flex-end' as c
 const heroValue = { flex: 1, fontSize: 40, fontWeight: '800' as const, letterSpacing: -1.2, color: '#FFFFFF' };
 const pctPill = { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 6 };
 const heroPct = { fontSize: 14, fontWeight: '800' as const };
-const syncText = { marginTop: 12, fontSize: 12, color: 'rgba(255,255,255,0.45)' };
+const syncRow = { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10, marginTop: 12 };
+const syncButton = { backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 };
+const syncButtonText = { color: '#fff', fontSize: 13, fontWeight: '700' as const };
+const syncText = { fontSize: 12, color: 'rgba(255,255,255,0.72)' };
 const metrics = { flexDirection: 'row' as const, gap: 8, paddingHorizontal: 16, marginTop: 12 };
 const metric = { flex: 1, backgroundColor: colors.surface, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 12 };
 const metricLabel = { fontSize: 12, color: colors.muted, marginBottom: 6 };

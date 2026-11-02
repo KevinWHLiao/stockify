@@ -6,7 +6,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { T } from '../../components/Text';
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { formatInt, formatMove, formatPrice, maskMoney } from '../../lib/format';
-import { formatDateLabel, isQuoteSessionToday, isWeekendDate, todayTaipei } from '../../lib/time';
+import { formatDateLabel, isMarketClosed, isQuoteSessionToday, todayTaipei } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { colors, pnlColor } from '../../theme';
 
@@ -22,7 +22,7 @@ export default function DayScreen() {
   );
   const { summary, views } = usePortfolio();
   const live = date === todayTaipei();
-  const closed = Boolean(date && (isWeekendDate(date) || (live && !views.some((view) => isQuoteSessionToday(view.quoteDate)))));
+  const closed = Boolean(date && (isMarketClosed(date) || (live && !views.some((view) => isQuoteSessionToday(view.quoteDate)))));
   const items = closed
     ? []
     : live

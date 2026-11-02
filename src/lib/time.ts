@@ -1,3 +1,5 @@
+import { isClosureDate } from './closures';
+
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 export function todayTaipei(now = new Date()) {
@@ -18,6 +20,10 @@ export function isWeekendDate(iso: string) {
   return weekday === 0 || weekday === 6;
 }
 
+export function isMarketClosed(iso: string) {
+  return isWeekendDate(iso) || isClosureDate(iso);
+}
+
 export function isQuoteSessionToday(quoteDate: string | null | undefined, now = new Date()) {
   if (!quoteDate || quoteDate.length !== 8) return false;
   const [year, month, day] = todayTaipei(now).split('-');
@@ -25,11 +31,7 @@ export function isQuoteSessionToday(quoteDate: string | null | undefined, now = 
 }
 
 export function isMarketOpen(now = new Date()) {
-  const weekday = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Taipei',
-    weekday: 'short',
-  }).format(now);
-  if (weekday === 'Sat' || weekday === 'Sun') return false;
+  if (isMarketClosed(todayTaipei(now))) return false;
   const clock = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Taipei',
     hour: '2-digit',

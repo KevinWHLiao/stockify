@@ -52,9 +52,9 @@ const BROWSER = {
   'User-Agent': 'Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
 };
 
-async function getJson(url: string, extraHeaders: Record<string, string> = {}) {
+async function getJson(url: string, extraHeaders: Record<string, string> = {}, timeoutMs = 10000) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, {
       signal: controller.signal,
@@ -80,7 +80,7 @@ function parseRow(row: MisRow): Quote | null {
 async function fetchBatch(items: { symbol: string; market: Market }[]) {
   if (items.length === 0) return { quotes: [] as Quote[], seen: new Set<string>() };
   const exCh = items.map((item) => `${item.market}_${item.symbol}.tw`).join('|');
-  const data = await getJson(misUrl(exCh), { Referer: 'https://mis.twse.com.tw/stock/index.jsp' });
+  const data = await getJson(misUrl(exCh), { Referer: 'https://mis.twse.com.tw/stock/index.jsp' }, 4500);
   const rows = Array.isArray(data?.msgArray) ? (data.msgArray as MisRow[]) : [];
   const seen = new Set(rows.map((row) => String(row.c ?? '').trim()).filter(Boolean));
   const quotes = rows.map(parseRow).filter((quote): quote is Quote => quote != null);
@@ -102,7 +102,7 @@ async function fetchBatchRetry(items: { symbol: string; market: Market }[]) {
     } catch {
       last = { quotes: [] as Quote[], seen: new Set<string>() };
     }
-    if (attempt === 0) await delay(600);
+    if (attempt === 0) await delay(200);
   }
   return last;
 }
@@ -110,17 +110,22 @@ async function fetchBatchRetry(items: { symbol: string; market: Market }[]) {
 async function fetchYahooQuote(item: { symbol: string; market: Market }): Promise<Quote | null> {
   if (!/^\d{4,6}$/.test(item.symbol)) return null;
   const suffixes = item.market === 'otc' ? ['TWO', 'TW'] : ['TW', 'TWO'];
-  for (const suffix of suffixes) {
-    try {
-      const data = await getJson(`https://query1.finance.yahoo.com/v8/finance/chart/${item.symbol}.${suffix}?interval=1m&range=1d&_=${Date.now()}`);
-      const quote = quoteFromYahoo(item.symbol, item.market, data?.chart?.result?.[0]?.meta as YahooMeta | undefined);
-      if (!quote) continue;
-      return { ...quote, name: findSymbol(item.symbol)?.name || quote.name };
-    } catch {
-      // 這個後綴沒有報價時改試另一個市場。
-    }
-  }
-  return null;
+  const found = await Promise.all(
+    suffixes.map(async (suffix) => {
+      try {
+        const data = await getJson(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${item.symbol}.${suffix}?interval=1m&range=1d&_=${Date.now()}`,
+          {},
+          4500,
+        );
+        return quoteFromYahoo(item.symbol, item.market, data?.chart?.result?.[0]?.meta as YahooMeta | undefined);
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const quote = found.find((item) => item != null);
+  return quote ? { ...quote, name: findSymbol(item.symbol)?.name || quote.name } : null;
 }
 
 async function fetchWave(items: { symbol: string; market: Market }[]) {

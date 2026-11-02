@@ -13,7 +13,8 @@ import { cnyesId, quoteFromCnyes } from '../src/lib/cnyesQuote';
 import { parseTwseSession, relativeStrength } from '../src/lib/sessionBoard';
 import { quoteFromYahoo } from '../src/lib/yahooQuote';
 import { replay, toView } from '../src/lib/portfolio';
-import { isQuoteSessionToday, isWeekendDate, todayTaipei } from '../src/lib/time';
+import { closureDatesFromSchedule } from '../src/lib/closures';
+import { isMarketClosed, isQuoteSessionToday, isWeekendDate, todayTaipei } from '../src/lib/time';
 import { defaultSettings, type Quote, type Transaction } from '../src/types';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -85,6 +86,15 @@ const sellCost = Math.floor(marketValue * 0.001425) + calcTax(marketValue, 'stoc
 close(view.pnl ?? 0, marketValue - wistron.totalCost - sellCost, 'wistron pnl');
 close(view.dailyPnl ?? 0, 0, 'wistron daily');
 assert(isWeekendDate('2026-10-31') && isWeekendDate('2026-11-01') && !isWeekendDate('2026-10-30'), 'weekends are not trading days');
+assert(isMarketClosed('2026-10-23') && isMarketClosed('2026-10-26') && !isMarketClosed('2026-10-27'), 'typhoon day and Restoration Day are closed');
+assert(!isMarketClosed('2026-01-02') && isMarketClosed('2026-02-12'), 'the first trading day stays open and settlement-only days stay closed');
+const closures = closureDatesFromSchedule({
+  data: [
+    ['2026-01-02', '國曆新年開始交易日', '國曆新年開始交易。'],
+    ['2026-10-26', '臺灣光復暨金門古寧頭大捷紀念日', '補假。'],
+  ],
+});
+assert(closures.join(',') === '2026-10-26', 'trading start days are not treated as closures');
 assert(toView(wistron, { ...quote, change: 8, date: '20200101' }, settings).dailyPnl == null, 'old session is not counted again');
 close(toView(wistron, { ...quote, change: 8, date: todayTaipei().replace(/-/g, '') }, settings).dailyPnl ?? 0, 8 * wistron.shares, 'today session is counted');
 assert(isQuoteSessionToday(todayTaipei().replace(/-/g, '')), 'today quote date matches');

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
 import { replay, summarize, toView } from '../lib/portfolio';
-import { isMarketOpen, isQuoteSessionToday, isWeekendDate, todayTaipei } from '../lib/time';
+import { isMarketClosed, isMarketOpen, isQuoteSessionToday, todayTaipei } from '../lib/time';
+import { refreshClosureDates } from '../services/closures';
 import { cnyesId } from '../lib/cnyesQuote';
 import { browserQuotesOnly, fetchQuotes, liveQuotesAvailable } from '../services/quotes';
 import { useStore } from '../store/useStore';
@@ -45,6 +46,7 @@ export function useQuoteSync() {
       const requests = positions.map((position) => ({ symbol: position.symbol, market: position.market }));
       const quotes = await fetchQuotes(requests, (partial) => {
         if (partial.length > 0) setQuotes(partial);
+        if (partial.length >= positions.length) setSyncing(false);
       });
       const expected = browserQuotesOnly() ? requests.filter((item) => cnyesId(item.symbol)).length : positions.length;
       if (quotes.length === 0 && expected > 0) throw new Error('empty');
@@ -55,7 +57,7 @@ export function useQuoteSync() {
       const views = positions.map((position) => toView(position, quoteMap.get(position.symbol), state.settings));
       const summary = summarize(views, all);
       const today = todayTaipei();
-      if (isWeekendDate(today) || !quotes.some((quote) => isQuoteSessionToday(quote.date))) return;
+      if (isMarketClosed(today) || !quotes.some((quote) => isQuoteSessionToday(quote.date))) return;
       recordSnapshot({
         date: today,
         updatedAt: new Date().toISOString(),
@@ -105,9 +107,10 @@ export function useQuoteSync() {
         running = false;
       }
       if (stopped) return;
-      timer = setTimeout(tick, isMarketOpen() ? 8000 : 180000);
+      timer = setTimeout(tick, isMarketOpen() ? 3000 : 180000);
     };
 
+    void refreshClosureDates();
     void tick();
     const subscription = AppState.addEventListener('change', (next) => {
       if (next === 'active') void tick();
