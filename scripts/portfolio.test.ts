@@ -10,6 +10,7 @@ import { parseCapitalHoldings, parseMoneyDjHoldings, parseYuantaHoldings } from 
 import { breakEvenPrice, calcTax, estimatedSellCost } from '../src/lib/fees';
 import { quoteFromMis } from '../src/lib/misQuote';
 import { cnyesId, quoteFromCnyes } from '../src/lib/cnyesQuote';
+import { usSearchTicker } from '../src/lib/usSymbol';
 import { parseTwseSession, relativeStrength } from '../src/lib/sessionBoard';
 import { quoteFromYahoo } from '../src/lib/yahooQuote';
 import { replay, toView } from '../src/lib/portfolio';
@@ -439,6 +440,9 @@ const nameRank = rankSymbols(
 assert(nameRank[0]?.symbol === '7723', 'exact company name ranks first');
 
 assert(cnyesId('us-sox') === 'GI:SOX:INDEX' && cnyesId('us-dji') === 'GI:DJI:INDEX', 'US indices use the public quote ids');
+assert(cnyesId('TSM') === 'USS:TSM:STOCK' && cnyesId('AAPL') === 'USS:AAPL:STOCK', 'US stocks use the public ADR quote ids');
+assert(usSearchTicker('台積電ADR') === 'TSM' && usSearchTicker('台積電 adr') === 'TSM' && usSearchTicker('TSM') === 'TSM', 'TSMC ADR aliases resolve to TSM');
+assert(usSearchTicker('台積電') === 'TSM' && usSearchTicker('2330') === null && usSearchTicker('築間') === null, 'plain Taiwan names do not become US tickers except 台積電');
 const session = parseTwseSession(
   {
     tables: [

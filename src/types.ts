@@ -1,4 +1,4 @@
-export type Market = 'tse' | 'otc';
+export type Market = 'tse' | 'otc' | 'us';
 export type AssetType = 'stock' | 'etf';
 export type TxType = 'buy' | 'sell' | 'cash_dividend' | 'stock_dividend';
 export type PnlMode = 'unrealized' | 'total';

@@ -7,11 +7,11 @@ import { MARKET_INDICES, SECTOR_GROUP_LABEL, SECTOR_HEADLINES, SECTOR_INDICES, U
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { refreshQuotes } from '../../hooks/useQuoteSync';
 import { refreshMarketQuotes, useMarketQuotes } from '../../hooks/useMarketQuotes';
-import { formatMove, formatPct, formatQuotePrice, formatVolume } from '../../lib/format';
+import { formatMove, formatPct, formatQuotePrice, formatVolume, marketLabel } from '../../lib/format';
 import type { SessionStrength } from '../../lib/sessionBoard';
 import { formatDateLabel, formatQuoteStamp } from '../../lib/time';
 import { fetchLatestSession } from '../../services/sessionBoard';
-import { browserQuotesOnly, searchSymbols } from '../../services/quotes';
+import { browserQuotesOnly, searchSymbols, searchUsSymbols } from '../../services/quotes';
 import { useStore } from '../../store/useStore';
 import type { Quote, SymbolInfo, WatchItem } from '../../types';
 import { colors, pnlColor } from '../../theme';
@@ -108,8 +108,20 @@ export default function MarketScreen() {
   useEffect(() => {
     if (!picking) return;
     let cancelled = false;
-    void searchSymbols(query).then((items) => {
-      if (!cancelled) setResults(items);
+    void Promise.all([searchSymbols(query), searchUsSymbols(query)]).then(([listed, us]) => {
+      if (cancelled) return;
+      const adrQuery = /adr/i.test(query) || /^[A-Za-z]{1,5}$/.test(query.trim());
+      const merged = adrQuery ? [...us, ...listed] : [...listed, ...us];
+      const seen = new Set<string>();
+      setResults(
+        merged
+          .filter((item) => {
+            if (seen.has(item.symbol)) return false;
+            seen.add(item.symbol);
+            return true;
+          })
+          .slice(0, 40),
+      );
     });
     return () => {
       cancelled = true;
@@ -137,7 +149,7 @@ export default function MarketScreen() {
                 : stamp
                   ? `行情 ${stamp}`
                   : '下拉可更新大盤與自選'}
-              {browserQuotesOnly() ? '。這個網頁會更新個股、加權與美股指數，類股指數請用手機 App。' : ''}
+              {browserQuotesOnly() ? '。這個網頁會更新個股、美股、加權與美股指數，類股指數請用手機 App。' : ''}
             </T>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -291,7 +303,7 @@ export default function MarketScreen() {
             </Pressable>
           </View>
           <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-            <FieldInput value={query} onChangeText={setQuery} placeholder="搜尋代號或名稱，例如 2330、台積電、築間" autoFocus />
+            <FieldInput value={query} onChangeText={setQuery} placeholder="搜尋代號或名稱，例如 2330、台積電、TSM" autoFocus />
           </View>
           <FlatList
             data={results}
@@ -316,7 +328,9 @@ export default function MarketScreen() {
                     <T style={rowName}>
                       {item.symbol} {item.name}
                     </T>
-                    <T style={rowMeta}>{item.market === 'otc' ? '上櫃' : '上市'}・{item.assetType === 'etf' ? 'ETF' : '股票'}</T>
+                    <T style={rowMeta}>
+                      {item.market === 'us' ? '美股・美元' : `${marketLabel(item.market)}・${item.assetType === 'etf' ? 'ETF' : '股票'}`}
+                    </T>
                   </View>
                   <T style={[pickerAction, watched && { color: colors.danger }]}>{watched ? '移除' : '加入'}</T>
                 </Pressable>
@@ -426,6 +440,7 @@ function WatchRow({
           </T>
           <T style={rowMeta}>
             {item.symbol}
+            {item.market === 'us' ? ' · 美股' : ''}
             {quote?.volume != null ? ` · ${formatVolume(quote.volume)}` : ''}
           </T>
         </View>

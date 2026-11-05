@@ -25,25 +25,30 @@ export function useMarketQuotes(active: boolean) {
       setMarketError('這個免費網頁不能直接向交易所更新行情。');
       return;
     }
-    const items = [
+    const watched = useStore.getState().watchlist.map((item) => ({ symbol: item.symbol, market: item.market }));
+    const twItems = [
       ...ALL_MARKET_INDICES.map((item) => ({ symbol: item.symbol, market: item.market })),
-      ...useStore.getState().watchlist.map((item) => ({ symbol: item.symbol, market: item.market })),
+      ...watched.filter((item) => item.market !== 'us'),
     ];
-    if (items.length === 0) return;
+    const usItems = [
+      ...US_INDICES.map((item) => ({ symbol: item.symbol, market: item.market })),
+      ...watched.filter((item) => item.market === 'us'),
+    ];
+    if (twItems.length === 0 && usItems.length === 0) return;
     setMarketSyncing(true);
     try {
-      const usItems = US_INDICES.map((item) => ({ symbol: item.symbol, market: item.market }));
       const [quotes, usQuotes] = await Promise.all([
-        fetchQuotes(items, (partial) => {
+        fetchQuotes(twItems, (partial) => {
           if (partial.length > 0) setMarketQuotes(partial);
         }),
         fetchCnyesQuotes(usItems).catch(() => []),
       ]);
       if (usQuotes.length > 0) setMarketQuotes(usQuotes);
-      const expected = browserQuotesOnly() ? items.filter((item) => cnyesId(item.symbol)).length : items.length;
-      if (quotes.length === 0 && expected > 0) throw new Error('empty');
+      const expectedTw = browserQuotesOnly() ? twItems.filter((item) => cnyesId(item.symbol)).length : twItems.length;
+      if (quotes.length === 0 && expectedTw > 0) throw new Error('empty');
       setMarketQuotes(quotes);
-      setMarketError(quotes.length < expected ? '部分標的暫時沒有報價' : null);
+      const expected = expectedTw + usItems.length;
+      setMarketError(quotes.length + usQuotes.length < expected ? '部分標的暫時沒有報價' : null);
     } catch {
       setMarketError('暫時連不到交易所，先顯示上次行情');
     } finally {

@@ -3,6 +3,7 @@ import { findSymbol, inferAssetType, searchListedNames, SYMBOLS } from '../data/
 import { parseTpexSuggestions, parseTwseSuggestions, rankSymbols } from '../lib/symbolSearch';
 import { quoteFromMis, type MisRow } from '../lib/misQuote';
 import { cnyesId, cnyesRowCode, quoteFromCnyes } from '../lib/cnyesQuote';
+import { usSearchTicker } from '../lib/usSymbol';
 import { quoteFromYahoo, type YahooMeta } from '../lib/yahooQuote';
 import type { Market, Quote, SymbolInfo } from '../types';
 
@@ -190,11 +191,15 @@ export async function fetchQuotes(
   const unique = new Map<string, { symbol: string; market: Market }>();
   for (const request of requests) unique.set(request.symbol, request);
   const items = [...unique.values()];
-  if (browserQuotesOnly()) return fetchCnyesQuotes(items, onUpdate);
-  const first = await fetchWave(items);
+  const usItems = items.filter((item) => item.market === 'us');
+  const twItems = items.filter((item) => item.market !== 'us');
+  const usQuotes = usItems.length > 0 ? await fetchCnyesQuotes(usItems, onUpdate) : [];
+  if (twItems.length === 0) return usQuotes;
+  if (browserQuotesOnly()) return mergeQuotes(usQuotes, await fetchCnyesQuotes(twItems, onUpdate));
+  const first = await fetchWave(twItems);
   let quotes = first.quotes;
   if (quotes.length > 0) onUpdate?.(quotes);
-  const missing = items
+  const missing = twItems
     .filter((item) => !first.seen.has(item.symbol))
     .map((item) => ({ ...item, market: item.market === 'tse' ? 'otc' : 'tse' }) as { symbol: string; market: Market });
   if (missing.length > 0) {
@@ -203,13 +208,29 @@ export async function fetchQuotes(
     if (quotes.length > 0) onUpdate?.(quotes);
   }
   const found = new Set(quotes.map((quote) => quote.symbol));
-  const unresolved = items.filter((item) => !found.has(item.symbol));
+  const unresolved = twItems.filter((item) => !found.has(item.symbol));
   if (unresolved.length > 0) {
     const extra = (await Promise.all(unresolved.map((item) => fetchYahooQuote(item)))).filter((quote): quote is Quote => quote != null);
     quotes = mergeQuotes(quotes, extra);
     if (extra.length > 0) onUpdate?.(quotes);
   }
-  return quotes;
+  return mergeQuotes(usQuotes, quotes);
+}
+
+export async function searchUsSymbols(query: string): Promise<SymbolInfo[]> {
+  const ticker = usSearchTicker(query);
+  if (!ticker) return [];
+  try {
+    const data = await getPublicJson(`https://ws.api.cnyes.com/ws/api/v1/quote/quotes/USS:${encodeURIComponent(ticker)}:STOCK`);
+    const row = Array.isArray(data?.data) ? (data.data[0] as Record<string, unknown> | undefined) : undefined;
+    const symbol = typeof row?.['200010'] === 'string' ? row['200010'].trim() : '';
+    const name = typeof row?.['200009'] === 'string' ? row['200009'].trim() : '';
+    const price = typeof row?.['6'] === 'number' ? row['6'] : 0;
+    if (!symbol || !name || price <= 0) return [];
+    return [{ symbol, name, market: 'us', assetType: 'stock' }];
+  } catch {
+    return [];
+  }
 }
 
 const NICKNAMES: Record<string, string> = {

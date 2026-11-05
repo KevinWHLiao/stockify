@@ -6,7 +6,7 @@ import { findMarketIndex } from '../../data/market';
 import { findSymbol, inferAssetType } from '../../data/symbols';
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { isTaiwanSymbol, type EtfConstituent } from '../../lib/etfHoldings';
-import { formatInt, formatMove, formatQuotePrice, formatVolume } from '../../lib/format';
+import { formatInt, formatMove, formatQuotePrice, formatVolume, marketLabel } from '../../lib/format';
 import { fetchEtfConstituents } from '../../services/etf';
 import { fetchQuotes } from '../../services/quotes';
 import type { Quote } from '../../types';
@@ -90,8 +90,8 @@ export default function QuoteScreen() {
           <Stat label="開盤" value={quote?.open == null ? '—' : formatQuotePrice(quote.open)} />
           <Stat label="最高" value={quote?.high == null ? '—' : formatQuotePrice(quote.high)} />
           <Stat label="最低" value={quote?.low == null ? '—' : formatQuotePrice(quote.low)} />
-          {!isIndex ? <Stat label="成交量" value={formatVolume(quote?.volume)} /> : null}
-          <Stat label="市場" value={market === 'otc' ? '上櫃' : '上市'} />
+          {!isIndex && market !== 'us' ? <Stat label="成交量" value={formatVolume(quote?.volume)} /> : null}
+          <Stat label="市場" value={market === 'us' ? '美股・美元' : marketLabel(market)} />
         </View>
 
         {isEtf ? (
@@ -154,13 +154,15 @@ export default function QuoteScreen() {
             >
               <T style={actionText}>{watched ? '移除自選' : '加入自選'}</T>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              style={[actionButton, actionPrimary]}
-              onPress={() => router.push({ pathname: '/add', params: { type: 'buy', symbol: code } })}
-            >
-              <T style={[actionText, { color: '#fff' }]}>記一筆</T>
-            </Pressable>
+            {market === 'us' ? null : (
+              <Pressable
+                accessibilityRole="button"
+                style={[actionButton, actionPrimary]}
+                onPress={() => router.push({ pathname: '/add', params: { type: 'buy', symbol: code } })}
+              >
+                <T style={[actionText, { color: '#fff' }]}>記一筆</T>
+              </Pressable>
+            )}
           </View>
         ) : null}
       </ScrollView>

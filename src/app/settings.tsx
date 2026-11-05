@@ -70,7 +70,7 @@ export default function SettingsScreen() {
         </View>
         <T style={h1}>報價</T>
         <T style={body}>
-          股價來自臺灣證券交易所公開行情；若交易所暫時沒回應，會改用另一份報價。交易日 9:00 到 13:35 約每 3 秒更新，其餘時間約每 3 分鐘更新。持股頁的「立即更新」可以立刻再抓一次。公開行情仍會比券商慢幾秒。這不是券商下單功能，數字只供自己對帳。
+          股價來自臺灣證券交易所公開行情；若交易所暫時沒回應，會改用另一份報價。交易日 9:00 到 13:35 約每 3 秒更新，其餘時間約每 3 分鐘更新。持股頁的「立即更新」可以立刻再抓一次。公開行情仍會比券商慢幾秒。行情裡的美股個股與美股指數用另一份公開報價，價格是美元，不會記進持股帳本。這不是券商下單功能，數字只供自己對帳。
         </T>
         <T style={h1}>漲跌提醒</T>
         <View style={row}>
@@ -166,7 +166,7 @@ export default function SettingsScreen() {
         <T style={h1}>關於</T>
         <View style={about}>
           <T style={aboutName}>我的持股</T>
-          <T style={aboutLine}>版本 {Constants.nativeAppVersion || Constants.expoConfig?.version || '1.5.8'}</T>
+          <T style={aboutLine}>版本 {Constants.nativeAppVersion || Constants.expoConfig?.version || '1.5.9'}</T>
           {Constants.nativeBuildVersion ? <T style={aboutLine}>組建編號 {Constants.nativeBuildVersion}</T> : null}
           <T style={body}>庫存與交易只存在這台裝置，開發者不會收到你的持股內容。這不是投資建議，也不能下單。</T>
         </View>

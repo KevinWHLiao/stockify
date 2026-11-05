@@ -1,4 +1,12 @@
+import type { Market } from '../types';
+
 export const HIDDEN_MONEY = '••••';
+
+export function marketLabel(market: Market) {
+  if (market === 'us') return '美股';
+  if (market === 'otc') return '上櫃';
+  return '上市';
+}
 
 export function maskMoney(hidden: boolean, text: string) {
   return hidden ? HIDDEN_MONEY : text;
