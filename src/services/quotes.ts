@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { findSymbol, inferAssetType, searchListedNames, SYMBOLS } from '../data/symbols';
+import { findSymbol, inferAssetType, isTaiwanCode, normalizeTaiwanCode, searchListedNames, SYMBOLS } from '../data/symbols';
 import { parseTpexSuggestions, parseTwseSuggestions, rankSymbols } from '../lib/symbolSearch';
 import { quoteFromMis, type MisRow } from '../lib/misQuote';
 import { cnyesId, cnyesRowCode, quoteFromCnyes } from '../lib/cnyesQuote';
@@ -109,17 +109,18 @@ async function fetchBatchRetry(items: { symbol: string; market: Market }[]) {
 }
 
 async function fetchYahooQuote(item: { symbol: string; market: Market }): Promise<Quote | null> {
-  if (!/^\d{4,6}$/.test(item.symbol)) return null;
+  if (!isTaiwanCode(item.symbol)) return null;
+  const symbol = item.symbol.toUpperCase();
   const suffixes = item.market === 'otc' ? ['TWO', 'TW'] : ['TW', 'TWO'];
   const found = await Promise.all(
     suffixes.map(async (suffix) => {
       try {
         const data = await getJson(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${item.symbol}.${suffix}?interval=1m&range=1d&_=${Date.now()}`,
+          `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.${suffix}?interval=1m&range=1d&_=${Date.now()}`,
           {},
           4500,
         );
-        return quoteFromYahoo(item.symbol, item.market, data?.chart?.result?.[0]?.meta as YahooMeta | undefined);
+        return quoteFromYahoo(symbol, item.market, data?.chart?.result?.[0]?.meta as YahooMeta | undefined);
       } catch {
         return null;
       }
@@ -248,26 +249,28 @@ async function searchRemote(url: string, parse: (data: unknown) => SymbolInfo[])
 
 export async function searchSymbols(query: string): Promise<SymbolInfo[]> {
   const text = query.trim();
+  const code = normalizeTaiwanCode(text);
+  const folded = text.toLowerCase();
   const nickname = findSymbol(NICKNAMES[text.replace(/\s/g, '')] ?? '');
   const local = SYMBOLS.filter((item) => {
     if (!text) return true;
-    return item.symbol.includes(text) || item.name.toLowerCase().includes(text.toLowerCase());
+    return item.symbol.toLowerCase().includes(folded) || item.name.toLowerCase().includes(folded);
   });
   const listed = text ? searchListedNames(text) : [];
   const remote = text
-    ? (await Promise.all([searchRemote(searchUrl(text), parseTwseSuggestions), searchRemote(tpexSearchUrl(text), parseTpexSuggestions)])).flat()
+    ? (await Promise.all([searchRemote(searchUrl(code), parseTwseSuggestions), searchRemote(tpexSearchUrl(code), parseTpexSuggestions)])).flat()
     : [];
   const merged = new Map<string, SymbolInfo>();
   if (nickname) merged.set(nickname.symbol, nickname);
   for (const item of [...local, ...listed, ...remote]) {
     if (!merged.has(item.symbol)) merged.set(item.symbol, item);
   }
-  if (/^\d{4,6}$/.test(text) && !merged.has(text)) {
-    merged.set(text, {
-      symbol: text,
+  if (isTaiwanCode(code) && !merged.has(code)) {
+    merged.set(code, {
+      symbol: code,
       name: '自訂代碼',
       market: 'tse',
-      assetType: inferAssetType(text, ''),
+      assetType: inferAssetType(code, ''),
     });
   }
   const items = [...merged.values()];

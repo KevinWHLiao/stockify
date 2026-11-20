@@ -7,6 +7,16 @@ export function inferAssetType(symbol: string, name: string): AssetType {
   return 'stock';
 }
 
+/** 台股代號可以是 2330，也可以是 00981A、00631L 這種後面帶一個英文字的 ETF。 */
+export function isTaiwanCode(symbol: string) {
+  return /^\d{4,6}[A-Za-z]?$/.test(symbol);
+}
+
+export function normalizeTaiwanCode(text: string) {
+  const trimmed = text.trim();
+  return isTaiwanCode(trimmed) ? trimmed.toUpperCase() : trimmed;
+}
+
 export const SYMBOLS: SymbolInfo[] = [
   ['0050', '元大台灣50', 'etf'],
   ['0056', '元大高股息', 'etf'],
@@ -129,13 +139,13 @@ export function searchListedNames(text: string) {
   if (!query) return [];
   const hits: SymbolInfo[] = [];
   for (const item of listedBySymbol.values()) {
-    if (item.symbol.includes(text.trim()) || item.name.toLowerCase().includes(query)) hits.push(item);
+    if (item.symbol.toLowerCase().includes(query) || item.name.toLowerCase().includes(query)) hits.push(item);
   }
   return hits;
 }
 
 export function isListedSymbol(symbol: string, name: string) {
-  if (!/^\d{4,6}$/.test(symbol)) return false;
+  if (!isTaiwanCode(symbol)) return false;
   if (/[購售權]/.test(name)) return false;
   return true;
 }

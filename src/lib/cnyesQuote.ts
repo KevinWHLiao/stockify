@@ -1,3 +1,4 @@
+import { isTaiwanCode } from '../data/symbols';
 import type { Market, Quote } from '../types';
 import { taipeiStamp } from './time';
 
@@ -50,7 +51,7 @@ export function cnyesId(symbol: string) {
   if (symbol === 'txf') return 'TWF:TXF:FUTURES';
   if (SECTOR_IDS[symbol]) return SECTOR_IDS[symbol];
   if (US_INDEX_IDS[symbol]) return US_INDEX_IDS[symbol];
-  if (/^\d{4,6}$/.test(symbol)) return `TWS:${symbol}:STOCK`;
+  if (isTaiwanCode(symbol)) return `TWS:${symbol.toUpperCase()}:STOCK`;
   if (/^[A-Z]{1,5}$/.test(symbol)) return `USS:${symbol}:STOCK`;
   return null;
 }

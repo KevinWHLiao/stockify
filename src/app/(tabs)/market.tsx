@@ -294,7 +294,7 @@ export default function MarketScreen() {
             </Pressable>
           </View>
           <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-            <FieldInput value={query} onChangeText={setQuery} placeholder="搜尋代號或名稱，例如 2330、台積電、TSM" autoFocus />
+            <FieldInput value={query} onChangeText={setQuery} placeholder="搜尋代號或名稱，例如 2330、00981A、台積電" autoFocus />
           </View>
           <FlatList
             data={results}

@@ -41,10 +41,11 @@ export function rankSymbols(items: SymbolInfo[], query: string) {
   const folded = text.toLowerCase();
   const score = (item: SymbolInfo) => {
     const name = item.name.toLowerCase();
-    if (item.symbol === text) return 0;
+    const symbol = item.symbol.toLowerCase();
+    if (symbol === folded) return 0;
     if (name === folded) return 1;
     if (name.startsWith(folded)) return 2;
-    if (item.symbol.startsWith(text)) return 3;
+    if (symbol.startsWith(folded)) return 3;
     return 4;
   };
   return [...items].sort((a, b) => score(a) - score(b) || a.symbol.localeCompare(b.symbol));

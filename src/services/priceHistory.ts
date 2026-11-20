@@ -1,3 +1,4 @@
+import { isTaiwanCode } from '../data/symbols';
 import { cnyesId } from '../lib/cnyesQuote';
 import { latestSessionCloses, parseTwseDailyBars, parseTwseIndexBars, type DailyBar } from '../lib/priceHistory';
 import { todayTaipei } from '../lib/time';
@@ -42,13 +43,13 @@ export async function fetchIntradayCloses(symbol: string) {
 
 export async function fetchDailyBars(symbol: string): Promise<DailyBar[]> {
   const index = symbol === 't00';
-  const stock = /^\d{4,6}$/.test(symbol);
+  const stock = isTaiwanCode(symbol);
   if (!index && !stock) return [];
   const batches = await Promise.all(
     monthKeys(3).map(async (date) => {
       const url = index
         ? `https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK?date=${date}&response=json`
-        : `https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?date=${date}&stockNo=${symbol}&response=json`;
+        : `https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?date=${date}&stockNo=${symbol.toUpperCase()}&response=json`;
       try {
         const data = await getJson(url);
         return index ? parseTwseIndexBars(data) : parseTwseDailyBars(data);

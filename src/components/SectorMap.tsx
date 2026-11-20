@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { formatPct } from '../lib/format';
 import { layoutTreemap } from '../lib/treemap';
-import { colors } from '../theme';
+import { colors, pnlColor } from '../theme';
 import { T } from './Text';
 
 export interface SectorTile {
@@ -20,11 +20,10 @@ function mix(from: string, to: string, amount: number) {
 }
 
 function tileColor(percent: number | null) {
-  if (percent == null) return colors.chip;
-  const depth = Math.min(Math.abs(percent) / 8, 1);
-  if (percent > 0.05) return mix('3A151C', 'FF4D5E', 0.3 + depth * 0.7);
-  if (percent < -0.05) return mix('12352C', '2FBF86', 0.25 + depth * 0.75);
-  return colors.chip;
+  if (percent == null || Math.abs(percent) <= 0.05) return '#1B1E26';
+  const depth = Math.min(Math.abs(percent) / 10, 1);
+  if (percent > 0) return mix('241418', '4A222B', 0.25 + depth * 0.75);
+  return mix('10201C', '163E32', 0.25 + depth * 0.75);
 }
 
 export function SectorMap({ tiles }: { tiles: SectorTile[] }) {
@@ -52,17 +51,19 @@ export function SectorMap({ tiles }: { tiles: SectorTile[] }) {
               height: box.height - gap,
               backgroundColor: tileColor(tile.changePercent),
               borderRadius: 8,
-              padding: 8,
+              borderWidth: 1,
+              borderColor: tile.changePercent == null ? colors.line : pnlColor(tile.changePercent),
+              padding: 6,
               justifyContent: 'center',
             }}
           >
-            {box.height >= 44 && box.width >= 52 ? (
-              <T style={{ color: colors.text, fontWeight: '800', fontSize: box.width > 120 ? 16 : 12 }} numberOfLines={1}>
+            {box.height >= 28 && box.width >= 42 ? (
+              <T style={{ color: colors.text, fontWeight: '800', fontSize: box.width > 120 ? 15 : 11 }} numberOfLines={1}>
                 {tile.name}
               </T>
             ) : null}
-            {box.height >= 32 && box.width >= 44 ? (
-              <T style={{ color: colors.text, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+            {box.height >= 22 && box.width >= 36 ? (
+              <T style={{ color: tile.changePercent == null ? colors.subtle : pnlColor(tile.changePercent), fontSize: 12, fontWeight: '700', marginTop: 2 }} numberOfLines={1}>
                 {tile.changePercent == null ? '—' : formatPct(tile.changePercent)}
               </T>
             ) : null}
