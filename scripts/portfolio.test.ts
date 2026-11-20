@@ -478,6 +478,7 @@ const calm = relativeStrength(-0.4, session.stocks, '2026-10-30');
 assert(!calm.dropped && calm.risers.length === 0, 'a mild day does not list names');
 
 assert(cnyesId('txf') === 'TWF:TXF:FUTURES', 'Taiwan index futures use the night-session quote');
+assert(cnyesId('t24') === 'TWS:TSE36:INDEX' && cnyesId('t17') === 'TWS:TSE31:INDEX', 'sector tiles use the public index ids');
 assert(isFuturesSession(new Date('2026-11-21T02:45:00+08:00')), 'Friday night session continues Saturday morning');
 assert(!isFuturesSession(new Date('2026-11-22T12:00:00+08:00')), 'Sunday has no futures session');
 assert(isFuturesSession(new Date('2026-11-20T20:00:00+08:00')), 'Friday evening is the night session');
