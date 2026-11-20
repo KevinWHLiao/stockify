@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { T } from '../../components/Text';
 import { formatDateLabel, isMarketClosed } from '../../lib/time';
 import { cashEffect } from '../../lib/portfolio';
-import { formatAvg, formatInt, formatPrice, maskMoney } from '../../lib/format';
+import { formatAvg, formatInt, formatPrice, formatSignedInt, maskMoney } from '../../lib/format';
 import { useStore } from '../../store/useStore';
 import type { Transaction, TxType } from '../../types';
 import { colors, pnlColor } from '../../theme';
@@ -51,6 +51,9 @@ export default function RecordsScreen() {
     () => Object.values(snapshots).filter((item) => !isMarketClosed(item.date)).sort((a, b) => (a.date < b.date ? 1 : -1)),
     [snapshots],
   );
+  const recentDays = days.slice(0, 5);
+  const recentSum = recentDays.reduce((sum, item) => sum + item.totalDailyPnl, 0);
+  const largestMove = Math.max(...days.slice(0, 12).map((item) => Math.abs(item.totalDailyPnl)), 1);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
@@ -96,6 +99,22 @@ export default function RecordsScreen() {
           sections={[{ title: 'days', data: days }]}
           keyExtractor={(item) => item.date}
           contentContainerStyle={{ paddingBottom: 32 }}
+          ListHeaderComponent={
+            days.length === 0 ? null : (
+              <View style={daySummary}>
+                <View style={{ flex: 1 }}>
+                  <T style={dayMeta}>最近一個交易日</T>
+                  <T style={dayDate}>{formatDateLabel(days[0].date)}</T>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <T style={[dayPnl, { color: hidden ? colors.flat : pnlColor(days[0].totalDailyPnl) }]}>
+                    {maskMoney(hidden, formatSignedInt(days[0].totalDailyPnl))}
+                  </T>
+                  <T style={dayMeta}>近 {recentDays.length} 日 {maskMoney(hidden, formatSignedInt(recentSum))}</T>
+                </View>
+              </View>
+            )
+          }
           ListEmptyComponent={
             <View style={empty}>
               <T style={emptyTitle}>還沒有每日損益</T>
@@ -104,11 +123,21 @@ export default function RecordsScreen() {
           }
           renderItem={({ item }) => (
             <Pressable style={dayRow} onPress={() => router.push({ pathname: '/day/[date]', params: { date: item.date } })}>
-              <View>
+              <View style={{ flex: 1, paddingRight: 12 }}>
                 <T style={dayDate}>{formatDateLabel(item.date)}</T>
-                <T style={dayMeta}>市值 {maskMoney(hidden, formatInt(item.totalMarketValue))}</T>
+                <T style={dayMeta}>當日損益 · 市值 {maskMoney(hidden, formatInt(item.totalMarketValue))}</T>
+                <View style={dayTrack}>
+                  <View
+                    style={{
+                      width: `${hidden ? 0 : Math.max(8, (Math.abs(item.totalDailyPnl) / largestMove) * 100)}%`,
+                      height: 6,
+                      borderRadius: 99,
+                      backgroundColor: hidden ? colors.line : pnlColor(item.totalDailyPnl),
+                    }}
+                  />
+                </View>
               </View>
-              <T style={[dayPnl, { color: hidden ? colors.flat : pnlColor(item.totalDailyPnl) }]}>{maskMoney(hidden, formatInt(item.totalDailyPnl))}</T>
+              <T style={[dayPnl, { color: hidden ? colors.flat : pnlColor(item.totalDailyPnl) }]}>{maskMoney(hidden, formatSignedInt(item.totalDailyPnl))}</T>
             </Pressable>
           )}
         />
@@ -190,6 +219,18 @@ const recordCash = { fontSize: 15, fontWeight: '700' as const };
 const empty = { padding: 40, alignItems: 'center' as const, gap: 8 };
 const emptyTitle = { fontSize: 18, fontWeight: '700' as const };
 const emptyBody = { color: colors.muted, textAlign: 'center' as const, lineHeight: 20 };
+const daySummary = {
+  flexDirection: 'row' as const,
+  alignItems: 'center' as const,
+  marginHorizontal: 16,
+  marginTop: 12,
+  marginBottom: 8,
+  paddingHorizontal: 16,
+  paddingVertical: 16,
+  borderRadius: 16,
+  backgroundColor: colors.surface,
+};
+const dayTrack = { marginTop: 8, height: 6, borderRadius: 99, backgroundColor: colors.line, overflow: 'hidden' as const };
 const dayRow = {
   flexDirection: 'row' as const,
   justifyContent: 'space-between' as const,

@@ -73,6 +73,40 @@ export const US_INDICES: MarketIndex[] = [
 
 export const ALL_MARKET_INDICES: MarketIndex[] = [...MARKET_INDICES, ...SECTOR_HEADLINES, ...SECTOR_INDICES];
 
+/** 類股圖的區塊大小。這是上市類股規模的大致比例，不是精確市值。 */
+export const SECTOR_WEIGHT: Record<string, number> = {
+  t24: 36,
+  t28: 12,
+  t17: 11,
+  t31: 8,
+  t25: 7,
+  t27: 4,
+  t15: 4,
+  t03: 3,
+  t26: 3,
+  t05: 2.2,
+  t22: 2,
+  t21: 1.6,
+  t12: 1.4,
+  t10: 1.4,
+  t14: 1.3,
+  t02: 1,
+  t23: 0.7,
+  t16: 0.6,
+  t01: 0.5,
+  t29: 0.5,
+  t30: 0.5,
+  t04: 0.4,
+  t06: 0.4,
+  t18: 0.4,
+  t11: 0.3,
+  t08: 0.3,
+  t20: 0.3,
+  t09: 0.2,
+};
+
+export const TX_FUTURES = { symbol: 'txf', name: '台指期近月', shortName: '台指期' };
+
 export function findMarketIndex(symbol: string) {
   return ALL_MARKET_INDICES.find((item) => item.symbol === symbol);
 }

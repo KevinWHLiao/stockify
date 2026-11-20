@@ -16,6 +16,22 @@ export function formatInt(value: number) {
   return Math.round(value).toLocaleString('en-US');
 }
 
+export function formatSignedInt(value: number) {
+  const text = formatInt(Math.abs(value));
+  if (value > 0) return `+${text}`;
+  if (value < 0) return `-${text}`;
+  return text;
+}
+
+/** 法人買賣差額，單位是億元。 */
+export function formatYi(value: number) {
+  const yi = value / 100_000_000;
+  const text = Math.abs(yi).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  if (yi > 0) return `+${text}億`;
+  if (yi < 0) return `-${text}億`;
+  return `${text}億`;
+}
+
 export function formatPrice(value: number) {
   return value.toLocaleString('en-US', {
     minimumFractionDigits: 2,

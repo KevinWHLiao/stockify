@@ -10,6 +10,8 @@ import { formatInt, formatMove, formatQuotePrice, formatVolume, marketLabel } fr
 import { fetchEtfConstituents } from '../../services/etf';
 import { fetchQuotes } from '../../services/quotes';
 import type { Quote } from '../../types';
+import { InstitutionalBoard } from '../../components/InstitutionalBoard';
+import { QuoteTrend } from '../../components/QuoteTrend';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { T } from '../../components/Text';
 import { formatQuoteStamp } from '../../lib/time';
@@ -83,6 +85,14 @@ export default function QuoteScreen() {
             {quote ? formatMove(quote.change, quote.changePercent) : '尚無報價'}
           </T>
           {quote?.time ? <T style={stamp}>更新 {formatQuoteStamp(quote.date, quote.time)}</T> : null}
+          {code && !isIndex ? <QuoteTrend symbol={code} /> : null}
+          {code === 't00' ? (
+            <>
+              <QuoteTrend symbol="t00" />
+              <T style={{ marginTop: 18, fontSize: 16, fontWeight: '800' }}>三大法人</T>
+              <InstitutionalBoard />
+            </>
+          ) : null}
         </View>
 
         <View style={grid}>

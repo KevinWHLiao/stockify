@@ -14,6 +14,7 @@ const US_INDEX_IDS: Record<string, string> = {
 
 export function cnyesId(symbol: string) {
   if (symbol === 't00') return 'TWS:TWII:INDEX';
+  if (symbol === 'txf') return 'TWF:TXF:FUTURES';
   if (US_INDEX_IDS[symbol]) return US_INDEX_IDS[symbol];
   if (/^\d{4,6}$/.test(symbol)) return `TWS:${symbol}:STOCK`;
   if (/^[A-Z]{1,5}$/.test(symbol)) return `USS:${symbol}:STOCK`;

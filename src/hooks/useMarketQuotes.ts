@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { ALL_MARKET_INDICES, US_INDICES } from '../data/market';
-import { isMarketOpen } from '../lib/time';
+import { isFuturesSession, isMarketOpen } from '../lib/time';
 import { cnyesId } from '../lib/cnyesQuote';
 import { browserQuotesOnly, fetchCnyesQuotes, fetchQuotes, liveQuotesAvailable } from '../services/quotes';
 import { useStore } from '../store/useStore';
@@ -32,6 +32,7 @@ export function useMarketQuotes(active: boolean) {
     ];
     const usItems = [
       ...US_INDICES.map((item) => ({ symbol: item.symbol, market: item.market })),
+      { symbol: 'txf', market: 'tse' as const },
       ...watched.filter((item) => item.market === 'us'),
     ];
     if (twItems.length === 0 && usItems.length === 0) return;
@@ -79,7 +80,7 @@ export function useMarketQuotes(active: boolean) {
           running = false;
         }
         if (stopped) return;
-        timer = setTimeout(tick, isMarketOpen() ? 3000 : 180000);
+        timer = setTimeout(tick, isMarketOpen() ? 3000 : isFuturesSession() ? 15000 : 180000);
       };
 
       void tick();

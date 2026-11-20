@@ -3,7 +3,10 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MARKET_INDICES, SECTOR_GROUP_LABEL, SECTOR_HEADLINES, SECTOR_INDICES, US_INDICES, type SectorGroup } from '../../data/market';
+import { InstitutionalBoard } from '../../components/InstitutionalBoard';
+import { QuoteTrend } from '../../components/QuoteTrend';
+import { SectorMap } from '../../components/SectorMap';
+import { MARKET_INDICES, SECTOR_HEADLINES, SECTOR_INDICES, SECTOR_WEIGHT, TX_FUTURES, US_INDICES, type SectorGroup } from '../../data/market';
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { refreshQuotes } from '../../hooks/useQuoteSync';
 import { refreshMarketQuotes, useMarketQuotes } from '../../hooks/useMarketQuotes';
@@ -32,6 +35,7 @@ export default function MarketScreen() {
   const [sectorFilter, setSectorFilter] = useState<'all' | SectorGroup>('all');
   const [session, setSession] = useState<SessionStrength | null>(null);
   const [sessionState, setSessionState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [boardKey, setBoardKey] = useState(0);
   const { views } = usePortfolio();
   const held = useMemo(() => new Set(views.filter((view) => view.shares > 0).map((view) => view.symbol)), [views]);
 
@@ -62,19 +66,21 @@ export default function MarketScreen() {
     [marketQuotes],
   );
 
-  const sectorGroups = useMemo(() => {
-    const groups: SectorGroup[] = sectorFilter === 'all' ? ['electronics', 'traditional'] : [sectorFilter];
-    return groups
-      .map((group) => {
-        const details = SECTOR_INDICES.filter((item) => item.group === group);
-        const items = details.length > 0 ? details : SECTOR_HEADLINES.filter((item) => item.group === group);
-        const rows = items
-          .map((item) => ({ meta: item, quote: marketQuotes[item.symbol] }))
-          .sort((a, b) => (b.quote?.changePercent ?? Number.NEGATIVE_INFINITY) - (a.quote?.changePercent ?? Number.NEGATIVE_INFINITY));
-        return { group, label: SECTOR_GROUP_LABEL[group], rows };
-      })
-      .filter((group) => group.rows.length > 0);
+  const sectorTiles = useMemo(() => {
+    const source =
+      sectorFilter === 'finance'
+        ? SECTOR_HEADLINES.filter((item) => item.group === 'finance')
+        : SECTOR_INDICES.filter((item) => sectorFilter === 'all' || item.group === sectorFilter);
+    const withFinance = sectorFilter === 'all' ? [...source, ...SECTOR_HEADLINES.filter((item) => item.symbol === 't17')] : source;
+    return withFinance.map((item) => ({
+      symbol: item.symbol,
+      name: item.shortName,
+      weight: SECTOR_WEIGHT[item.symbol] ?? 1,
+      changePercent: marketQuotes[item.symbol]?.changePercent ?? null,
+    }));
   }, [marketQuotes, sectorFilter]);
+
+  const futures = marketQuotes[TX_FUTURES.symbol];
 
   const rows = useMemo(
     () =>
@@ -130,6 +136,7 @@ export default function MarketScreen() {
 
   const onRefresh = async () => {
     setPulling(true);
+    setBoardKey((key) => key + 1);
     await Promise.all([refreshMarketQuotes(), loadSession()]);
     setPulling(false);
   };
@@ -175,6 +182,18 @@ export default function MarketScreen() {
             />
           ))}
         </View>
+        <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
+          <QuoteTrend key={`t00-${boardKey}`} symbol="t00" />
+        </View>
+        <T style={section}>台指期</T>
+        <T style={sectorNote}>近月一口。下午 3 點到凌晨 5 點的夜盤也算在裡面，所以價位跟加權現貨不會一樣。</T>
+        <View style={indexGrid}>
+          <IndexCard shortName={TX_FUTURES.shortName} quote={futures} />
+        </View>
+        <T style={section}>三大法人</T>
+        <View style={{ paddingHorizontal: 16 }}>
+          <InstitutionalBoard key={boardKey} />
+        </View>
 
         <T style={section}>美股指數</T>
         <T style={sectorNote}>道瓊、標普 500、那斯達克、費城半導體。交易時段跟台股不同，收盤後才是完整的一天。</T>
@@ -192,7 +211,7 @@ export default function MarketScreen() {
           <T style={sectionTitle}>類股表現</T>
           <T style={sectionHint}>電子、金融、傳產</T>
         </View>
-        <T style={sectorNote}>傳產是未含金融、電子的類股。點進去可看指數明細。</T>
+        <T style={sectorNote}>區塊越大，這個類股的規模越大，是大致比例。顏色越深，漲跌越多。紅漲、綠跌。點進去可看指數。</T>
         <View style={headlineRow}>
           {headlines.map(({ meta, quote }) => {
             const tone = pnlColor(quote?.change);
@@ -238,36 +257,8 @@ export default function MarketScreen() {
             );
           })}
         </View>
-        {sectorGroups.map((group) => (
-          <View key={group.group}>
-            <T style={groupLabel}>{group.label}</T>
-            {group.group === 'finance' ? <T style={groupHint}>證交所沒有再把金融拆成銀行、保險、證券。</T> : null}
-            <View style={Platform.OS === 'web' ? webGrid : undefined}>
-            {group.rows.map(({ meta, quote }) => (
-              <Pressable
-                key={meta.symbol}
-                accessibilityRole="button"
-                accessibilityLabel={meta.name}
-                onPress={() => router.push({ pathname: '/quote/[symbol]', params: { symbol: meta.symbol } })}
-                style={[sectorRow, Platform.OS === 'web' && webCell]}
-              >
-                <View style={{ flex: 1, paddingRight: 10 }}>
-                  <T style={rowName}>{meta.shortName}</T>
-                  <T style={rowMeta}>{meta.name}</T>
-                </View>
-                <View style={{ alignItems: 'flex-end', minWidth: 108 }}>
-                  <T style={[watchPrice, { color: quote ? colors.text : colors.flat }]}>
-                    {quote ? formatQuotePrice(quote.price) : '—'}
-                  </T>
-                  <T style={[watchMove, { color: quote ? pnlColor(quote.change) : colors.flat }]}>
-                    {quote ? formatMove(quote.change, quote.changePercent) : '尚無報價'}
-                  </T>
-                </View>
-              </Pressable>
-            ))}
-            </View>
-          </View>
-        ))}
+        {sectorFilter === 'finance' ? <T style={groupHint}>證交所沒有再把金融拆成銀行、保險、證券。</T> : null}
+        <SectorMap tiles={sectorTiles} />
 
         <View style={sectionRow}>
           <T style={sectionTitle}>自選行情</T>

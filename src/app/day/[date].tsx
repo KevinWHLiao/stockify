@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { T } from '../../components/Text';
 import { usePortfolio } from '../../hooks/usePortfolio';
-import { formatInt, formatMove, formatPrice, maskMoney } from '../../lib/format';
+import { formatInt, formatMove, formatPrice, formatSignedInt, maskMoney } from '../../lib/format';
 import { formatDateLabel, isMarketClosed, isQuoteSessionToday, todayTaipei } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { colors, pnlColor } from '../../theme';
@@ -42,6 +42,10 @@ export default function DayScreen() {
     : (snapshot?.items ?? []).map((item) => ({ ...item, changePercent: item.price - item.change > 0 ? (item.change / (item.price - item.change)) * 100 : 0 }));
   const totalDaily = live ? summary.dailyPnl : (snapshot?.totalDailyPnl ?? 0);
   const totalValue = live ? summary.marketValue : (snapshot?.totalMarketValue ?? 0);
+  const ranked = [...items].sort((a, b) => b.dailyPnl - a.dailyPnl);
+  const largest = Math.max(...ranked.map((item) => Math.abs(item.dailyPnl)), 1);
+  const rising = ranked.filter((item) => item.dailyPnl > 0).length;
+  const falling = ranked.filter((item) => item.dailyPnl < 0).length;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top', 'bottom']}>
@@ -49,20 +53,37 @@ export default function DayScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 28 }}>
         <View style={{ paddingHorizontal: 20 }}>
           <T style={{ color: colors.muted }}>{formatDateLabel(date)}</T>
-          <T style={[hero, { color: hidden || !items.length ? colors.flat : pnlColor(totalDaily) }]}>{items.length ? maskMoney(hidden, formatInt(totalDaily)) : '—'}</T>
-          <T style={{ color: colors.muted }}>{items.length ? `收盤市值 ${maskMoney(hidden, formatInt(totalValue))}` : closed ? '這天沒有交易，不記入當日損益' : '這天沒有行情快照'}</T>
+          <T style={{ color: colors.muted, marginTop: 4 }}>當日損益</T>
+          <T style={[hero, { color: hidden || !items.length ? colors.flat : pnlColor(totalDaily) }]}>{items.length ? maskMoney(hidden, formatSignedInt(totalDaily)) : '—'}</T>
+          <T style={{ color: colors.muted }}>
+            {items.length
+              ? `收盤市值 ${maskMoney(hidden, formatInt(totalValue))} · 上漲 ${rising} 檔 · 下跌 ${falling} 檔`
+              : closed
+                ? '這天沒有交易，不記入當日損益'
+                : '這天沒有行情快照'}
+          </T>
         </View>
-        <T style={section}>持股當日損益</T>
+        {ranked.length > 0 ? (
+          <>
+            <T style={section}>各檔貢獻</T>
+            <T style={empty}>長條是這一檔占當天波動的大小。正數是幫你賺到的，負數是拖累的。</T>
+          </>
+        ) : (
+          <T style={section}>各檔貢獻</T>
+        )}
         {items.length === 0 && !closed ? <T style={empty}>連線更新後才會留下當天股價。手動紀錄仍會列在下面。</T> : null}
-        {items.map((item) => (
+        {ranked.map((item) => (
           <View key={item.symbol} style={row}>
             <View style={{ flex: 1 }}>
               <T style={name}>{item.name}</T>
               <T style={sub}>
                 {formatPrice(item.price)} {formatMove(item.change, item.changePercent)}・{formatInt(item.shares)}股
               </T>
+              <View style={track}>
+                <View style={{ width: `${hidden ? 0 : Math.max(8, (Math.abs(item.dailyPnl) / largest) * 100)}%`, height: 6, borderRadius: 99, backgroundColor: hidden ? colors.line : pnlColor(item.dailyPnl) }} />
+              </View>
             </View>
-            <T style={[pnl, { color: hidden ? colors.flat : pnlColor(item.dailyPnl) }]}>{maskMoney(hidden, formatInt(item.dailyPnl))}</T>
+            <T style={[pnl, { color: hidden ? colors.flat : pnlColor(item.dailyPnl) }]}>{maskMoney(hidden, formatSignedInt(item.dailyPnl))}</T>
           </View>
         ))}
         <T style={section}>當天手動紀錄</T>
@@ -103,3 +124,4 @@ const row = {
 const name = { fontWeight: '700' as const, color: colors.text };
 const sub = { marginTop: 3, color: colors.muted, fontSize: 13 };
 const pnl = { fontSize: 16, fontWeight: '800' as const };
+const track = { marginTop: 8, height: 6, borderRadius: 99, backgroundColor: colors.line, overflow: 'hidden' as const };

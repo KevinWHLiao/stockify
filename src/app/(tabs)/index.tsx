@@ -10,7 +10,7 @@ import { isDemoTransaction } from '../../data/seed';
 import { backupAgeDays, parseBackup, quotesFromBackup } from '../../lib/backup';
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { refreshQuotes } from '../../hooks/useQuoteSync';
-import { formatInt, formatPct, maskMoney } from '../../lib/format';
+import { formatInt, formatPct, formatSignedInt, maskMoney } from '../../lib/format';
 import { portfolioWeight, sortHoldings } from '../../lib/holdings';
 import type { HoldingSort } from '../../types';
 import { formatQuoteStamp, isQuoteSessionToday, todayTaipei } from '../../lib/time';
@@ -154,8 +154,8 @@ export default function HoldingsScreen() {
 
         <View style={[metrics, Platform.OS === 'web' && webMetrics]}>
           <Pressable accessibilityRole="button" accessibilityLabel="持股日損益" style={metric} onPress={() => router.push({ pathname: '/day/[date]', params: { date: todayTaipei() } })}>
-            <T style={metricLabel}>今日</T>
-            <T style={[metricValue, { color: hidden || !tradedToday ? colors.flat : hasPrice ? pnlColor(summary.dailyPnl) : colors.flat }]}>{maskMoney(hidden, hasPrice && tradedToday ? formatInt(summary.dailyPnl) : '—')}</T>
+            <T style={metricLabel}>今日損益</T>
+            <T style={[metricValue, { color: hidden || !tradedToday ? colors.flat : hasPrice ? pnlColor(summary.dailyPnl) : colors.flat }]}>{maskMoney(hidden, hasPrice && tradedToday ? formatSignedInt(summary.dailyPnl) : '—')}</T>
           </Pressable>
           <View style={metric}>
             <T style={metricLabel}>市值</T>

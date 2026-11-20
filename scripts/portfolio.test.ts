@@ -10,6 +10,11 @@ import { parseCapitalHoldings, parseMoneyDjHoldings, parseYuantaHoldings } from 
 import { breakEvenPrice, calcTax, estimatedSellCost } from '../src/lib/fees';
 import { quoteFromMis } from '../src/lib/misQuote';
 import { cnyesId, quoteFromCnyes } from '../src/lib/cnyesQuote';
+import { formatYi } from '../src/lib/format';
+import { parseInstitutional } from '../src/lib/institutional';
+import { latestSessionCloses, parseTwseDailyBars } from '../src/lib/priceHistory';
+import { isFuturesSession } from '../src/lib/time';
+import { layoutTreemap } from '../src/lib/treemap';
 import { usSearchTicker } from '../src/lib/usSymbol';
 import { parseTwseSession, relativeStrength } from '../src/lib/sessionBoard';
 import { quoteFromYahoo } from '../src/lib/yahooQuote';
@@ -471,5 +476,28 @@ assert(board.risers.every((item) => item.symbol !== '0050' && item.symbol !== '9
 assert(board.resilient[0]?.symbol === '2330', 'a smaller drop than the index is resilient');
 const calm = relativeStrength(-0.4, session.stocks, '2026-10-30');
 assert(!calm.dropped && calm.risers.length === 0, 'a mild day does not list names');
+
+assert(cnyesId('txf') === 'TWF:TXF:FUTURES', 'Taiwan index futures use the night-session quote');
+assert(isFuturesSession(new Date('2026-11-21T02:45:00+08:00')), 'Friday night session continues Saturday morning');
+assert(!isFuturesSession(new Date('2026-11-22T12:00:00+08:00')), 'Sunday has no futures session');
+assert(isFuturesSession(new Date('2026-11-20T20:00:00+08:00')), 'Friday evening is the night session');
+assert(!isFuturesSession(new Date('2026-11-23T02:00:00+08:00')), 'Monday before dawn is not a session');
+const flow = parseInstitutional({
+  date: '20261120',
+  data: [
+    ['自營商(自行買賣)', '1', '2', '-5,067,838,740'],
+    ['自營商(避險)', '1', '2', '-29,015,401,380'],
+    ['投信', '1', '2', '-7,346,992,003'],
+    ['外資及陸資(不含外資自營商)', '1', '2', '-9,510,543,572'],
+    ['合計', '1', '2', '-50,940,775,695'],
+  ],
+});
+assert(flow?.dealer === -34_083_240_120 && formatYi(flow.foreign) === '-95.1億' && formatYi(flow.total) === '-509.4億', 'institutional totals match the exchange table');
+const bars = parseTwseDailyBars({ data: [['115/11/02', '1', '2', '2,310.00', '2,345.00', '2,310.00', '2,330.00']] });
+assert(bars[0]?.date === '2026-11-02' && bars[0].close === 2330, 'daily bars use the ROC date and close');
+assert(latestSessionCloses([100, 200, 30000], [1, 2, 3]).join() === '3', 'a long gap keeps only the latest session');
+const boxes = layoutTreemap([36, 12], 100, 100);
+const area = (index: number) => (boxes[index]?.width ?? 0) * (boxes[index]?.height ?? 0);
+assert(area(0) > area(1) && Math.round(area(0) + area(1)) === 10000, 'larger sectors take more of the map');
 
 console.log('portfolio checks passed');

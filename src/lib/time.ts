@@ -30,6 +30,29 @@ export function isQuoteSessionToday(quoteDate: string | null | undefined, now = 
   return quoteDate === `${year}${month}${day}`;
 }
 
+function taipeiClock(now: Date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Taipei',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const weekday = parts.find((part) => part.type === 'weekday')?.value ?? '';
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value);
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value);
+  return { weekday, minutes: hour * 60 + minute };
+}
+
+/** 台指期日盤與夜盤。夜盤從週一到週五 15:00，一路到隔天凌晨 5:00，含週六凌晨。 */
+export function isFuturesSession(now = new Date()) {
+  const { weekday, minutes } = taipeiClock(now);
+  const daySession = weekday !== 'Sat' && weekday !== 'Sun' && minutes >= 8 * 60 + 45 && minutes <= 13 * 60 + 45;
+  const evening = weekday !== 'Sat' && weekday !== 'Sun' && minutes >= 15 * 60;
+  const earlyMorning = minutes < 5 * 60 && weekday !== 'Sun' && weekday !== 'Mon';
+  return daySession || evening || earlyMorning;
+}
+
 export function isMarketOpen(now = new Date()) {
   if (isMarketClosed(todayTaipei(now))) return false;
   const clock = new Intl.DateTimeFormat('en-GB', {
