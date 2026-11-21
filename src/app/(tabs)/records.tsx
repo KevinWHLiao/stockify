@@ -2,7 +2,9 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, SectionList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MonthTrend } from '../../components/MonthTrend';
 import { T } from '../../components/Text';
+import { monthlyPnl } from '../../lib/monthlyPnl';
 import { formatDateLabel, isMarketClosed } from '../../lib/time';
 import { cashEffect } from '../../lib/portfolio';
 import { formatAvg, formatInt, formatPrice, formatSignedInt, maskMoney } from '../../lib/format';
@@ -51,6 +53,7 @@ export default function RecordsScreen() {
     () => Object.values(snapshots).filter((item) => !isMarketClosed(item.date)).sort((a, b) => (a.date < b.date ? 1 : -1)),
     [snapshots],
   );
+  const months = useMemo(() => monthlyPnl(days), [days]);
   const recentDays = days.slice(0, 5);
   const recentSum = recentDays.reduce((sum, item) => sum + item.totalDailyPnl, 0);
   const largestMove = Math.max(...days.slice(0, 12).map((item) => Math.abs(item.totalDailyPnl)), 1);
@@ -101,6 +104,8 @@ export default function RecordsScreen() {
           contentContainerStyle={{ paddingBottom: 32 }}
           ListHeaderComponent={
             days.length === 0 ? null : (
+              <>
+              <MonthTrend months={months} hidden={hidden} />
               <View style={daySummary}>
                 <View style={{ flex: 1 }}>
                   <T style={dayMeta}>最近一個交易日</T>
@@ -113,6 +118,7 @@ export default function RecordsScreen() {
                   <T style={dayMeta}>近 {recentDays.length} 日 {maskMoney(hidden, formatSignedInt(recentSum))}</T>
                 </View>
               </View>
+              </>
             )
           }
           ListEmptyComponent={

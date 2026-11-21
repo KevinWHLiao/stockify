@@ -3,6 +3,7 @@ import { findSymbol, inferAssetType, isTaiwanCode, normalizeTaiwanCode, searchLi
 import { parseTpexSuggestions, parseTwseSuggestions, rankSymbols } from '../lib/symbolSearch';
 import { quoteFromMis, type MisRow } from '../lib/misQuote';
 import { cnyesId, cnyesRowCode, quoteFromCnyes } from '../lib/cnyesQuote';
+import { preferQuote } from '../lib/quoteTime';
 import { usSearchTicker } from '../lib/usSymbol';
 import { quoteFromYahoo, type YahooMeta } from '../lib/yahooQuote';
 import type { Market, Quote, SymbolInfo } from '../types';
@@ -147,6 +148,14 @@ function mergeQuotes(current: Quote[], extra: Quote[]) {
   return [...next.values()];
 }
 
+function preferQuotes(groups: Quote[][]) {
+  const next = new Map<string, Quote>();
+  for (const group of groups) {
+    for (const quote of group) next.set(quote.symbol, preferQuote(next.get(quote.symbol), quote));
+  }
+  return [...next.values()];
+}
+
 async function getPublicJson(url: string) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
@@ -177,17 +186,40 @@ export async function fetchCnyesQuotes(items: { symbol: string; market: Market }
         if (!quote) continue;
         quotes.push({ ...quote, name: findSymbol(item.symbol)?.name || quote.name });
       }
+      if (quotes.length > 0) onUpdate?.(quotes);
     } catch {
       // 這一批失敗時繼續下一批，已拿到的報價仍會顯示。
     }
   }
+  return quotes;
+}
+
+async function fetchExchangeQuotes(items: { symbol: string; market: Market }[], onUpdate?: (quotes: Quote[]) => void) {
+  const first = await fetchWave(items);
+  let quotes = first.quotes;
   if (quotes.length > 0) onUpdate?.(quotes);
+  const missing = items
+    .filter((item) => !first.seen.has(item.symbol))
+    .map((item) => ({ ...item, market: item.market === 'tse' ? 'otc' : 'tse' }) as { symbol: string; market: Market });
+  if (missing.length > 0) {
+    const second = await fetchWave(missing);
+    quotes = mergeQuotes(quotes, second.quotes);
+    if (second.quotes.length > 0) onUpdate?.(quotes);
+  }
+  const found = new Set(quotes.map((quote) => quote.symbol));
+  const unresolved = items.filter((item) => !found.has(item.symbol));
+  if (unresolved.length > 0) {
+    const extra = (await Promise.all(unresolved.map((item) => fetchYahooQuote(item)))).filter((quote): quote is Quote => quote != null);
+    quotes = mergeQuotes(quotes, extra);
+    if (extra.length > 0) onUpdate?.(quotes);
+  }
   return quotes;
 }
 
 export async function fetchQuotes(
   requests: { symbol: string; market: Market }[],
   onUpdate?: (quotes: Quote[]) => void,
+  options?: { race?: boolean },
 ) {
   const unique = new Map<string, { symbol: string; market: Market }>();
   for (const request of requests) unique.set(request.symbol, request);
@@ -197,25 +229,13 @@ export async function fetchQuotes(
   const usQuotes = usItems.length > 0 ? await fetchCnyesQuotes(usItems, onUpdate) : [];
   if (twItems.length === 0) return usQuotes;
   if (browserQuotesOnly()) return mergeQuotes(usQuotes, await fetchCnyesQuotes(twItems, onUpdate));
-  const first = await fetchWave(twItems);
-  let quotes = first.quotes;
-  if (quotes.length > 0) onUpdate?.(quotes);
-  const missing = twItems
-    .filter((item) => !first.seen.has(item.symbol))
-    .map((item) => ({ ...item, market: item.market === 'tse' ? 'otc' : 'tse' }) as { symbol: string; market: Market });
-  if (missing.length > 0) {
-    const second = await fetchWave(missing);
-    quotes = mergeQuotes(quotes, second.quotes);
-    if (quotes.length > 0) onUpdate?.(quotes);
-  }
-  const found = new Set(quotes.map((quote) => quote.symbol));
-  const unresolved = twItems.filter((item) => !found.has(item.symbol));
-  if (unresolved.length > 0) {
-    const extra = (await Promise.all(unresolved.map((item) => fetchYahooQuote(item)))).filter((quote): quote is Quote => quote != null);
-    quotes = mergeQuotes(quotes, extra);
-    if (extra.length > 0) onUpdate?.(quotes);
-  }
-  return mergeQuotes(usQuotes, quotes);
+  if (!options?.race) return mergeQuotes(usQuotes, await fetchExchangeQuotes(twItems, onUpdate));
+  const cnyesItems = twItems.filter((item) => cnyesId(item.symbol));
+  const [cnyesQuotes, exchangeQuotes] = await Promise.all([
+    cnyesItems.length > 0 ? fetchCnyesQuotes(cnyesItems, onUpdate).catch(() => [] as Quote[]) : Promise.resolve([] as Quote[]),
+    fetchExchangeQuotes(twItems, onUpdate),
+  ]);
+  return mergeQuotes(usQuotes, preferQuotes([exchangeQuotes, cnyesQuotes]));
 }
 
 export async function searchUsSymbols(query: string): Promise<SymbolInfo[]> {

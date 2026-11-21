@@ -5,6 +5,7 @@ import { Platform, Pressable, RefreshControl, ScrollView, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HoldingRow, HoldingTable } from '../../components/HoldingRow';
 import { Logo } from '../../components/Logo';
+import { MonthTrend } from '../../components/MonthTrend';
 import { T } from '../../components/Text';
 import { isDemoTransaction } from '../../data/seed';
 import { backupAgeDays, parseBackup, quotesFromBackup } from '../../lib/backup';
@@ -13,7 +14,8 @@ import { refreshQuotes } from '../../hooks/useQuoteSync';
 import { formatInt, formatPct, formatSignedInt, maskMoney } from '../../lib/format';
 import { portfolioWeight, sortHoldings } from '../../lib/holdings';
 import type { HoldingSort } from '../../types';
-import { formatQuoteStamp, isQuoteSessionToday, todayTaipei } from '../../lib/time';
+import { monthlyPnl } from '../../lib/monthlyPnl';
+import { formatQuoteStamp, isMarketClosed, isQuoteSessionToday, todayTaipei } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { colors, pnlColor } from '../../theme';
 
@@ -24,6 +26,7 @@ export default function HoldingsScreen() {
   const transactions = useStore((state) => state.transactions);
   const restoreLedger = useStore((state) => state.restoreLedger);
   const quotes = useStore((state) => state.quotes);
+  const snapshots = useStore((state) => state.snapshots);
   const syncing = useStore((state) => state.syncing);
   const quoteError = useStore((state) => state.quoteError);
   const [pulling, setPulling] = useState(false);
@@ -39,6 +42,10 @@ export default function HoldingsScreen() {
   const backupAge = backupAgeDays(settings.lastBackupAt);
   const showBackupReminder = settings.backupReminder && (backupAge === null || backupAge >= 7);
   const sorted = useMemo(() => sortHoldings(views, settings.holdingSort), [settings.holdingSort, views]);
+  const months = useMemo(
+    () => monthlyPnl(Object.values(snapshots).filter((item) => !isMarketClosed(item.date))),
+    [snapshots],
+  );
 
   const openBackup = () => {
     if (Platform.OS !== 'web') return;
@@ -167,6 +174,7 @@ export default function HoldingsScreen() {
           </View>
         </View>
         </View>
+        <MonthTrend months={months} hidden={hidden} />
         {quoteError ? <T style={errorText}>{quoteError}</T> : null}
 
         <View style={section}>

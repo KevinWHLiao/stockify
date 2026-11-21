@@ -44,10 +44,14 @@ export function useQuoteSync() {
     setSyncing(true);
     try {
       const requests = positions.map((position) => ({ symbol: position.symbol, market: position.market }));
-      const quotes = await fetchQuotes(requests, (partial) => {
-        if (partial.length > 0) setQuotes(partial);
-        if (partial.length >= positions.length) setSyncing(false);
-      });
+      const quotes = await fetchQuotes(
+        requests,
+        (partial) => {
+          if (partial.length > 0) setQuotes(partial);
+          if (partial.length >= positions.length) setSyncing(false);
+        },
+        { race: true },
+      );
       const expected = browserQuotesOnly() ? requests.filter((item) => cnyesId(item.symbol)).length : positions.length;
       if (quotes.length === 0 && expected > 0) throw new Error('empty');
       setQuotes(quotes);
@@ -107,7 +111,7 @@ export function useQuoteSync() {
         running = false;
       }
       if (stopped) return;
-      timer = setTimeout(tick, isMarketOpen() ? 3000 : 180000);
+      timer = setTimeout(tick, isMarketOpen() ? 2000 : 180000);
     };
 
     void refreshClosureDates();

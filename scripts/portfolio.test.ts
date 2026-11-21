@@ -14,6 +14,8 @@ import { formatYi } from '../src/lib/format';
 import { parseInstitutional } from '../src/lib/institutional';
 import { latestSessionCloses, parseTwseDailyBars } from '../src/lib/priceHistory';
 import { isFuturesSession } from '../src/lib/time';
+import { monthlyPnl } from '../src/lib/monthlyPnl';
+import { preferQuote } from '../src/lib/quoteTime';
 import { layoutTreemap } from '../src/lib/treemap';
 import { usSearchTicker } from '../src/lib/usSymbol';
 import { parseTwseSession, relativeStrength } from '../src/lib/sessionBoard';
@@ -503,5 +505,17 @@ assert(latestSessionCloses([100, 200, 30000], [1, 2, 3]).join() === '3', 'a long
 const boxes = layoutTreemap([36, 12], 100, 100);
 const area = (index: number) => (boxes[index]?.width ?? 0) * (boxes[index]?.height ?? 0);
 assert(area(0) > area(1) && Math.round(area(0) + area(1)) === 10000, 'larger sectors take more of the map');
+const months = monthlyPnl([
+  { date: '2026-10-28', totalDailyPnl: -6495 },
+  { date: '2026-10-30', totalDailyPnl: -367164 },
+  { date: '2026-11-02', totalDailyPnl: -119887 },
+  { date: 'holiday', totalDailyPnl: 1 },
+]);
+assert(months.length === 2 && months[0].month === '2026-10' && months[0].total === -373659 && months[0].days === 2, 'October daily results add into one month');
+assert(months[1].label === '11月' && months[1].total === -119887, 'the next month keeps its own total');
+const older = { symbol: '2330', name: '台積電', price: 100, previousClose: 100, change: 0, changePercent: 0, open: 100, high: 100, low: 100, volume: 10, time: '13:00:00', date: '20261120', market: 'tse' as const };
+const newer = { ...older, price: 101, time: '13:00:02', volume: null as number | null };
+assert(preferQuote(older, newer).price === 101 && preferQuote(older, newer).volume === 10, 'a newer quote replaces the price and keeps volume');
+assert(preferQuote(newer, older).price === 101, 'an older quote does not replace a newer price');
 
 console.log('portfolio checks passed');

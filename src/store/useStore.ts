@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { DEFAULT_WATCHLIST } from '../data/market';
 import { buildSeed } from '../data/seed';
 import { ledgerError } from '../lib/portfolio';
+import { preferQuote } from '../lib/quoteTime';
 import { isMarketClosed } from '../lib/time';
 import type { DaySnapshot, Quote, Settings, Transaction, WatchItem } from '../types';
 import { defaultSettings } from '../types';
@@ -118,14 +119,14 @@ export const useStore = create<Store>()(
         }),
       setQuotes: (quotes) => {
         const next = { ...get().quotes };
-        for (const quote of quotes) next[quote.symbol] = quote;
+        for (const quote of quotes) next[quote.symbol] = preferQuote(next[quote.symbol], quote);
         set({ quotes: next, lastSyncAt: new Date().toISOString() });
       },
       setQuoteError: (message) => set({ quoteError: message }),
       setSyncing: (syncing) => set({ syncing }),
       setMarketQuotes: (quotes) => {
         const next = { ...get().marketQuotes };
-        for (const quote of quotes) next[quote.symbol] = quote;
+        for (const quote of quotes) next[quote.symbol] = preferQuote(next[quote.symbol], quote);
         set({ marketQuotes: next });
       },
       setMarketError: (message) => set({ marketError: message }),
