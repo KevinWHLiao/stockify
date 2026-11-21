@@ -51,7 +51,7 @@ const card = {
 };
 const title = { fontSize: 16, fontWeight: '800' as const, color: colors.text };
 const hint = { marginTop: 4, color: colors.muted, fontSize: 12, lineHeight: 18 };
-const plot = { flexDirection: 'row' as const, alignItems: 'flex-end' as const, height: 168, gap: 10, paddingTop: 12 };
+const plot = { flexDirection: 'row' as const, alignItems: 'flex-end' as const, gap: 10, paddingTop: 8 };
 const column = { width: 72, alignItems: 'center' as const, justifyContent: 'flex-end' as const };
 const amount = { fontSize: 11, fontWeight: '700' as const };
 const monthLabel = { marginTop: 6, fontSize: 12, fontWeight: '700' as const, color: colors.subtle };
